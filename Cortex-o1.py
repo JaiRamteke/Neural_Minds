@@ -469,7 +469,7 @@ def get_stock_info(ticker):
 
 def main():
     # Title and description
-    st.markdown('<h1 class="main-header">StockAI Predictor Pro</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Advanced Market Analysis & AI-Powered Prediction Platform</p>', unsafe_allow_html=True)
 
     # API Status Check
@@ -927,7 +927,7 @@ def main():
     else:
         # Welcome screen
         st.markdown("""
-        ## 🚀 Welcome to StockAI Predictor Pro!
+        ##              🚀 Welcome to Cortex-o1 Predictive Model!
         
         ### ✨ Premium Features:
         - **🔄 Multi-API Integration**: Seamless data fetching from multiple sources
