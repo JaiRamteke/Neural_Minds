@@ -1011,84 +1011,86 @@ def main():
                 st.write(f"- Date Range: {df['Date'].min().strftime('%Y-%m-%d')} to {df['Date'].max().strftime('%Y-%m-%d')}")
         
     else:
-        # Welcome screen
-        # Title and tagline
-        st.title("🚀 Cortex-o1 Predictive Model")
-st.caption("AI-powered stock predictions and analysis — built with Streamlit, scikit-learn, and Plotly")
+            # Welcome screen
+            # Title and tagline
+            st.title("🚀 Cortex-o1 Predictive Model")
+            st.caption("AI-powered stock predictions and analysis — built with Streamlit, scikit-learn, and Plotly")
 
-st.divider()
+            st.divider()
 
-# Two-column intro: Features & Market Coverage
-col1, col2 = st.columns(2)
+            # Two-column intro: Features & Market Coverage
+            col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("✨ Premium Features")
-    st.markdown("""
-    - 🔄 **Multi-API Integration**: Seamless data fetching
-    - 🤖 **Advanced AI Models**: ML-powered predictions
-    - 📊 **Comprehensive Analysis**: Technical indicators & market context
-    - 🎨 **Premium Interface**: Dark, responsive design
-    - 📈 **Interactive Charts**: Plotly-based exploration
-    - 🔍 **Performance Metrics**: MAE, RMSE, MAPE, R²
-    """)
+            with col1:
+                st.subheader("✨ Premium Features")
+                st.markdown("""
+                - 🔄 **Multi-API Integration**: Seamless data fetching
+                - 🤖 **Advanced AI Models**: ML-powered predictions
+                - 📊 **Comprehensive Analysis**: Technical indicators & market context
+                - 🎨 **Premium Interface**: Dark, responsive design
+                - 📈 **Interactive Charts**: Plotly-based exploration
+                - 🔍 **Performance Metrics**: MAE, RMSE, MAPE, R²
+                """)
 
-with col2:
-    st.subheader("🌍 Global Market Coverage")
-    st.markdown("""
-    **US 🇺🇸**
-    - Apple (AAPL), Alphabet (GOOGL), Microsoft (MSFT)
-    - Tesla (TSLA), Amazon (AMZN), NVIDIA (NVDA)
-    - Meta (META), Netflix (NFLX), JPMorgan (JPM), Visa (V)
+            with col2:
+                st.subheader("🌍 Global Market Coverage")
+                st.markdown("""
+                **US 🇺🇸**
+                - Apple (AAPL), Alphabet (GOOGL), Microsoft (MSFT)
+                - Tesla (TSLA), Amazon (AMZN), NVIDIA (NVDA)
+                - Meta (META), Netflix (NFLX), JPMorgan (JPM), Visa (V)
 
-    **India 🇮🇳**
-    - Reliance (RELIANCE), TCS (TCS), Infosys (INFY)
-    - HDFC Bank (HDFCBANK), Wipro (WIPRO)
-    - ITC (ITC), SBI (SBIN)
-    """)
+                **India 🇮🇳**
+                - Reliance (RELIANCE), TCS (TCS), Infosys (INFY)
+                - HDFC Bank (HDFCBANK), Wipro (WIPRO)
+                - ITC (ITC), SBI (SBIN)
+                """)
 
-st.divider()
+            st.divider()
 
-# Two-column: How it works & Technical Analysis
-col3, col4 = st.columns(2)
+            # Two-column: How it works & Technical Analysis
+            col3, col4 = st.columns(2)
 
-with col3:
-    st.subheader("🎯 How It Works")
-    st.markdown("""
-    1. **Select a stock/ticker**
-    2. **Choose time period** (1M–5Y)
-    3. **AI analysis** with engineered features
-    4. **Forecast** next-period price with prediction interval
-    5. **Visualize** with interactive charts & metrics
-    """)
+            with col3:
+                st.subheader("🎯 How It Works")
+                st.markdown("""
+                1. **Select a stock/ticker**
+                2. **Choose time period** (1M–5Y)
+                3. **AI analysis** with engineered features
+                4. **Forecast** next-period price with prediction interval
+                5. **Visualize** with interactive charts & metrics
+                """)
 
-    st.subheader("💡 Pro Tips")
-    st.markdown("""
-    - Longer histories (≥1Y) improve stability
-    - Compare multiple windows for robustness
-    - Use intervals, not point estimates
-    - Diversify — predictions are uncertain
-    """)
+                st.subheader("💡 Pro Tips")
+                st.markdown("""
+                - Longer histories (≥1Y) improve stability
+                - Compare multiple windows for robustness
+                - Use intervals, not point estimates
+                - Diversify — predictions are uncertain
+                """)
 
-with col4:
-    st.subheader("🧠 Machine Learning")
-    st.markdown("""
-    - Random Forest Regression (time-series aware)
-    - Feature engineering: MAs, RSI, volume, returns
-    - Walk-forward / TimeSeriesSplit validation
-    """)
+            with col4:
+                st.subheader("🧠 Machine Learning")
+                st.markdown("""
+                - Random Forest Regression (time-series aware)
+                - Feature engineering: MAs, RSI, volume, returns
+                - Walk-forward / TimeSeriesSplit validation
+                """)
 
-    st.subheader("📊 Technical Analysis")
-    st.markdown("""
-    - Moving Averages (20-day, 50-day)
-    - RSI momentum
-    - Volume trends
-    - Price-change patterns
-    """)
+                st.subheader("📊 Technical Analysis")
+                st.markdown("""
+                - Moving Averages (20-day, 50-day)
+                - RSI momentum
+                - Volume trends
+                - Price-change patterns
+                """)
 
-st.divider()
+                st.divider()
 
-# Footer / Disclaimer
-st.caption("**Disclaimer:** This app provides educational analytics and probabilistic forecasts only. It is not financial advice. Markets are volatile; past performance does not guarantee future results.")
-
+                
+                # Footer / Disclaimer
+                st.caption("**Disclaimer:** This app provides educational analytics and probabilistic forecasts only. It is not financial advice. Markets are volatile; past performance does not guarantee future results.")
+                
 if __name__ == "__main__":
     main()
+
