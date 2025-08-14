@@ -1085,12 +1085,13 @@ def main():
                 - Price-change patterns
                 """)
 
-                st.divider()
+            st.divider()
 
                 
                 # Footer / Disclaimer
-                st.caption("**Disclaimer:** This app provides educational analytics and probabilistic forecasts only. It is not financial advice. Markets are volatile; past performance does not guarantee future results.")
+            st.caption("**Disclaimer:** This app provides educational analytics and probabilistic forecasts only. It is not financial advice. Markets are volatile; past performance does not guarantee future results.")
                 
 if __name__ == "__main__":
     main()
+
 
