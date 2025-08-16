@@ -449,10 +449,6 @@ def train_model(df):
             n_jobs=-1
         )
 
-        # Cross-validation for more reliable performance
-        cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='r2')
-        st.write(f"Cross-validated R² (5-fold): {np.mean(cv_scores):.3f}")
-
         model.fit(X_train_scaled, y_train)
         
         # Make predictions
@@ -1326,3 +1322,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
