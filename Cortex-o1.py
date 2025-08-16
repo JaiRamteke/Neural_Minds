@@ -570,16 +570,6 @@ def main():
             index=3,
             help="Choose the historical data period for analysis"
         )
-        # Alpha Vantage options
-        av_mode, av_interval = "Daily", "5min"
-        if source == "alpha_vantage":
-            av_mode = st.sidebar.selectbox("Alpha Vantage Mode", ["Daily", "Intraday"])
-        if av_mode == "Intraday":
-            av_interval = st.sidebar.selectbox(
-                "Select Intraday Interval",
-                ["1min", "5min", "15min", "30min", "60min"],
-                index=1  # default = 5min
-        )
 
         # Prediction settings
         st.markdown("#### 🔮 Prediction Settings")
@@ -587,24 +577,6 @@ def main():
         
         # Action button
         predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
-
-        # === Run Analysis when button is pressed ===
-        if predict_button:
-            with st.spinner("Fetching stock data..."):
-                df = fetch_stock_data_unified(
-                    ticker,
-                    period,
-                    source=source,
-                    market=market,
-                    av_mode=av_mode,
-                    av_interval=av_interval,
-                )
-
-        if df is None or df.empty:
-            st.error("❌ No data fetched. Please check ticker, API limits, or try another source.")
-        else:
-            st.success("✅ Data successfully fetched!")
-            st.dataframe(df.head())
 
     # Main content area
     if predict_button:
