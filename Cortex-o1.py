@@ -742,7 +742,17 @@ def main():
                     st.metric("52W High", "Data not available")
             
             with col2:
-                st.metric("52W Low", f"{currency_symbol}{df['Low'].min():.2f}")
+                low_52w = None
+                if df is not None and 'Low' in df.columns and not df.empty:
+                    try:
+                        low_52w = float(df['Low'].min())
+                    except (ValueError, TypeError):
+                        low_52w = None
+
+                if low_52w is not None and not pd.isna(low_52w):
+                    st.metric("52W Low", f"{currency_symbol}{low_52w:.2f}")
+                else:
+                    st.metric("52W Low", "Data not available")
             
             with col3:
                 avg_volume = df['Volume'].mean()
@@ -1103,5 +1113,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
