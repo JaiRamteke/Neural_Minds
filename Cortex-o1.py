@@ -250,24 +250,6 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         st.warning(f"yfinance error: {str(e)}. Using sample data.")
         return create_sample_data(ticker, period)
 
-        # Download data
-        df = yf.download(ticker, period=yf_period, interval="1d", auto_adjust=False)
-
-        if df.empty:
-            raise Exception("No data returned from yfinance")
-
-        # Reset index for consistency
-        df.reset_index(inplace=True)
-        df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
-
-        # Add metadata
-        df.attrs = {'source': 'yfinance', 'ticker': ticker}
-        return df
-
-    except Exception as e:
-        st.warning(f"yfinance error: {str(e)}. Using sample data.")
-        return create_sample_data(ticker, period)
-
 def map_ticker_for_source(ticker: str, source: str) -> str:
     """
     Map ticker to correct format depending on source.
@@ -1089,3 +1071,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
