@@ -1246,10 +1246,11 @@ def main():
                 - ⏳ Compare predictions across different timeframes  
                 - 🛡️ Always diversify your portfolio  
 
-                ---
+        ---
                 👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
                 """)
 
 
 if __name__ == "__main__":
     main()
+
