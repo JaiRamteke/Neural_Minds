@@ -478,6 +478,23 @@ def get_stock_info(ticker):
     info['market_cap'] = 'N/A'
     return info
 
+# ---------------------------
+# Safe-stat helper + Volatility computation placement
+# ---------------------------
+def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
+    """
+    Safely compute a statistic on a dataframe column and display with Streamlit.
+    """
+    try:
+        if df is not None and col in df.columns and not df[col].dropna().empty:
+            val = func(df[col].dropna())
+            if pd.notna(val):
+                st.write(f"- {label}: {currency_symbol}{fmt.format(val)}")
+                return
+    except Exception:
+        pass
+    st.write(f"- {label}: Data not available")
+
 def main():
     # Title and description
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
@@ -638,7 +655,38 @@ def main():
                 current_price_val = None
         else:
             current_price_val = None
-        
+
+        # ---------------------------
+        # Robust volatility calculation (compute once)
+        # ---------------------------
+        volatility = None
+        is_intraday = False
+        try:
+            if df is not None and 'Date' in df.columns and not df['Date'].empty:
+                # detect intraday by seeing if time component is non-zero anywhere
+                hours = df['Date'].dt.hour
+                minutes = df['Date'].dt.minute
+                if (hours.max() != 0) or (minutes.max() != 0):
+                    is_intraday = True
+        except Exception:
+            is_intraday = False
+
+        try:
+            if df is not None and 'Close' in df.columns and len(df) > 2:
+                returns = df['Close'].pct_change().dropna()
+                if not returns.empty:
+                    if is_intraday:
+                        # intraday volatility (no annualization)
+                        volatility = returns.std()
+                    else:
+                        # daily data -> annualize using sqrt(252)
+                        volatility = returns.std() * (252 ** 0.5)
+        except Exception:
+            volatility = None
+
+        # ---------------------------
+        # UI Tabs - Tab1 (Stock Analysis)
+        # ---------------------------
         with tab1:
             # Stock information
             st.markdown(f"### 📋 {stock_info['name']} ({ticker})")
@@ -688,8 +736,11 @@ def main():
             with col4:
                 if volatility is not None:
                     try:
-                        vol_val = float(volatility)
-                        st.metric("Volatility", f"{vol_val:.2f}%")
+                        if is_intraday:
+                            st.metric("Volatility (intraday σ)", f"{volatility:.4f}")
+                        else:
+                            # show percent for annualized volatility
+                            st.metric("Volatility (annualized %)", f"{volatility*100:.2f}%")
                     except (ValueError, TypeError):
                         st.metric("Volatility", "Data not available")
                 else:
@@ -743,6 +794,9 @@ def main():
                     current_rsi = df['RSI'].iloc[-1]
                     st.metric("RSI", f"{current_rsi:.1f}")
         
+        # ---------------------------
+        # Tab2: Predictions (unchanged)
+        # ---------------------------
         with tab2:
             # Train model and make predictions
             st.markdown("### 🤖 AI Predictions")
@@ -804,6 +858,9 @@ def main():
                     else:
                         st.error("🔴 Bearish Signal")
         
+        # ---------------------------
+        # Tab3: Charts (unchanged except x-axis handling remains ok)
+        # ---------------------------
         with tab3:
             # Charts and visualizations
             st.markdown("### 📈 Stock Price Charts")
@@ -890,6 +947,9 @@ def main():
                 
                 st.plotly_chart(fig_rsi, use_container_width=True)
         
+        # ---------------------------
+        # Tab4: Model Performance (unchanged)
+        # ---------------------------
         with tab4:
             # Model performance details
             if model is not None:
@@ -952,6 +1012,9 @@ def main():
                     - **Price_Change**: Recent price change percentage
                     """)
         
+        # ---------------------------
+        # Tab5: Data Table + Data Statistics (REPLACED with safe_stat usage)
+        # ---------------------------
         with tab5:
             # Data table
             st.markdown("### 📋 Historical Data")
@@ -990,88 +1053,62 @@ def main():
             
             with col1:
                 st.markdown("**💰 Price Statistics:**")
-                high_val = df['High'].max()
+                # Highest, Lowest, Average
+                safe_stat(df, "High", np.max, "Highest Price", "{:.2f}", currency_symbol)
+                safe_stat(df, "Low", np.min, "Lowest Price", "{:.2f}", currency_symbol)
+                safe_stat(df, "Close", np.mean, "Average Price", "{:.2f}", currency_symbol)
+                
+                # Price Range
                 try:
-                    high_val = float(high_val)
-                    st.write(f"- Highest Price: {currency_symbol}{high_val:.2f}")
-                except (ValueError, TypeError):
-                    st.write("- Highest Price: Data not available")
-                low_val = df['Low'].min()
-                try:
-                    low_val = float(low_val)
-                    st.write(f"- Lowest Price: {currency_symbol}{low_val:.2f}")
-                except (ValueError, TypeError):
-                    st.write("- Lowest Price: Data not available")
-                avg_price_val = None
-                if df is not None and 'Close' in df.columns and not df['Close'].empty:
-                    try:
-                        val = df['Close'].mean()
-                        if pd.notna(val):
-                            avg_price_val = float(val)
-                    except Exception:
-                        avg_price_val = None
-
-                if avg_price_val is not None:
-                    st.write(f"- Average Price: {currency_symbol}{avg_price_val:.2f}")
-                else:
-                    st.write("- Average Price: Data not available")
-                price_range_val = None
-                if df is not None and 'High' in df.columns and 'Low' in df.columns:
-                    try:
-                        high_val = df['High'].max()
-                        low_val = df['Low'].min()
+                    if "High" in df.columns and "Low" in df.columns:
+                        high_val = df["High"].max()
+                        low_val = df["Low"].min()
                         if pd.notna(high_val) and pd.notna(low_val):
-                            price_range_val = float(high_val) - float(low_val)
-                    except Exception:
-                        price_range_val = None
-
-                if price_range_val is not None:
-                    st.write(f"- Price Range: {currency_symbol}{price_range_val:.2f}")
-                else:
+                            price_range = float(high_val) - float(low_val)
+                            st.write(f"- Price Range: {currency_symbol}{price_range:.2f}")
+                        else:
+                            st.write("- Price Range: Data not available")
+                    else:
+                        st.write("- Price Range: Data not available")
+                except Exception:
                     st.write("- Price Range: Data not available")
             
             with col2:
                 st.markdown("**📊 Trading Statistics:**")
-                # --- Average Volume ---
-                avg_vol = None
-                if df is not None and 'Volume' in df.columns and not df['Volume'].empty:
-                    try:
-                        val = df['Volume'].mean()
-                        if pd.notna(val):
-                            avg_vol = int(val)
-                    except Exception:
-                        avg_vol = None
-
-                st.write(f"- Average Volume: {avg_vol:,.0f}" if avg_vol is not None else "- Average Volume: Data not available")
-
-                # --- Max Volume ---
-                max_vol = None
-                if df is not None and 'Volume' in df.columns and not df['Volume'].empty:
-                    try:
-                        val = df['Volume'].max()
-                        if pd.notna(val):
-                            max_vol = int(val)
-                    except Exception:
-                        max_vol = None
-
-                st.write(f"- Max Volume: {max_vol:,.0f}" if max_vol is not None else "- Max Volume: Data not available")
-
-                # --- Total Data Points ---
-                st.write(f"- Total Data Points: {len(df):,}" if df is not None else "- Total Data Points: Data not available")
-
-                # --- Date Range ---
-                date_min, date_max = None, None
-                if df is not None and 'Date' in df.columns and not df['Date'].empty:
-                    try:
+                safe_stat(df, "Volume", np.mean, "Average Volume", "{:,.0f}")
+                safe_stat(df, "Volume", np.max, "Max Volume", "{:,.0f}")
+                
+                # Total Data Points
+                if df is not None and not df.empty:
+                    st.write(f"- Total Data Points: {len(df):,}")
+                else:
+                    st.write("- Total Data Points: Data not available")
+                
+                # Date Range
+                try:
+                    if "Date" in df.columns and not df["Date"].empty:
                         date_min = df['Date'].min()
                         date_max = df['Date'].max()
-                    except Exception:
-                        date_min, date_max = None, None
-
-                if date_min is not None and date_max is not None and not pd.isna(date_min) and not pd.isna(date_max):
-                    st.write(f"- Date Range: {date_min.strftime('%Y-%m-%d')} to {date_max.strftime('%Y-%m-%d')}")
-                else:
+                        if pd.notna(date_min) and pd.notna(date_max):
+                            st.write(f"- Date Range: {date_min.strftime('%Y-%m-%d')} to {date_max.strftime('%Y-%m-%d')}")
+                        else:
+                            st.write("- Date Range: Data not available")
+                    else:
+                        st.write("- Date Range: Data not available")
+                except Exception:
                     st.write("- Date Range: Data not available")
+                
+                # Volatility (show in data table area as well)
+                try:
+                    if volatility is not None:
+                        if is_intraday:
+                            st.write(f"- Volatility (intraday σ): {volatility:.4f}")
+                        else:
+                            st.write(f"- Volatility (annualized): {volatility*100:.2f}%")
+                    else:
+                        st.write("- Volatility: Data not available")
+                except Exception:
+                    st.write("- Volatility: Data not available")
         
         # Warning disclaimer
         st.markdown("""
@@ -1171,4 +1208,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
