@@ -669,7 +669,18 @@ def main():
             
             with col2:
                 price_change = df['Close'].iloc[-1] - df['Close'].iloc[-2] if len(df) > 1 else 0
-                pct_change = (price_change / df['Close'].iloc[-2] * 100) if len(df) > 1 and df['Close'].iloc[-2] != 0 else 0
+                pct_change = 0
+                if df is not None and len(df) > 1:
+                    prev_close = df['Close'].iloc[-2]
+                    last_close = df['Close'].iloc[-1]
+                try:
+                    prev_close = float(prev_close)
+                    last_close = float(last_close)
+                    if prev_close != 0:
+                        price_change = last_close - prev_close
+                        pct_change = (price_change / prev_close) * 100
+                except (ValueError, TypeError):
+                    pct_change = 0
                 st.metric("Price Change", f"{currency_symbol}{price_change:.2f}", f"{pct_change:.2f}%")
             
             with col3:
@@ -1060,3 +1071,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
