@@ -665,6 +665,7 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
+                current_price_val = None
                 if df is not None and not df.empty:
                     # fallback: last close from df
                     current_price_val = df['Close'].iloc[-1]
@@ -1131,3 +1132,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
