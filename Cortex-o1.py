@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -110,9 +109,20 @@ st.markdown("""
         }
         
         /* Hide Streamlit branding */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        #MainMenu {visibility: visible;}
+        footer {visibility: visible;}
+        header {visibility: visible;}
+            
+        section[data-testid="stSidebar"] {
+            background: #f9f9f9;  /* adjust for your theme */
+            color: #000;
+        }
+        section[data-testid="stSidebar"] .stSelectbox label,
+        section[data-testid="stSidebar"] .stRadio label,
+        section[data-testid="stSidebar"] .stSlider label {
+            color: #000 !important;
+            font-weight: 500;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -213,6 +223,10 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         df.attrs = {'source':'yfinance','ticker':ticker}
         df['Date'] = pd.to_datetime(df['Date'])
         return df
+    except Exception as e:
+        st.warning(f"yfinance error: {str(e)}. Using sample data.")
+        return create_sample_data(ticker, period)
+
     except Exception as e:
         st.warning(f"yfinance error: {str(e)}. Using sample data.")
         return create_sample_data(ticker, period)
@@ -964,7 +978,7 @@ def main():
     else:
         # Welcome screen
         st.markdown("""
-        ##                Welcome to Cortex-o1 Predictive Model!
+        ##              🚀 Welcome to Cortex-o1 Predictive Model!
         
         ### ✨ Premium Features:
         - **🔄 Multi-API Integration**: Seamless data fetching from multiple sources
@@ -1038,7 +1052,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
