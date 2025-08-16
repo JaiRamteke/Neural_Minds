@@ -466,11 +466,6 @@ def train_model(df):
             'train_size': len(X_train),
             'test_size': len(X_test)
         }
-
-        # Display metrics in Streamlit
-        st.subheader("Model Performance Metrics")
-        st.write(metrics)
-        
         # Feature importance
         feature_importance = pd.DataFrame({
             'feature': feature_names,
@@ -1314,5 +1309,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
