@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -507,7 +508,12 @@ def main():
 
     # Initialize variables (🔑 this is where you add it)
     df, current_price = None, None
-    volatility = None   # <-- ADD THIS LINE
+    current_price_val = None    # <-- ADD THIS
+    price_change, pct_change = None, None
+    volatility = None
+    avg_volume = None
+    high_52w, low_52w = None, None
+
 
     # API Status Check
     with st.expander("🔍 API Status Check", expanded=False):
@@ -659,8 +665,7 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                current_price_val = None
-                if current_price is None and df is not None and not df.empty:
+                if df is not None and not df.empty:
                     # fallback: last close from df
                     current_price_val = df['Close'].iloc[-1]
                 else:
@@ -1126,8 +1131,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
