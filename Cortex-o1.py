@@ -665,7 +665,7 @@ def main():
                 if current_price is not None:
                     st.metric("Current Price", f"{currency_symbol}{float(current_price):.2f}")
                 else:
-                    st.metric("Current Price", "Data not available")")
+                    st.metric("Current Price", "Data not available")
             
             with col2:
                 price_change = df['Close'].iloc[-1] - df['Close'].iloc[-2] if len(df) > 1 else 0
