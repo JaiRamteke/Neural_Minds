@@ -1015,7 +1015,19 @@ def main():
                     st.write(f"- Average Price: {currency_symbol}{avg_price_val:.2f}")
                 else:
                     st.write("- Average Price: Data not available")
-                st.write(f"- Price Range: {currency_symbol}{(df['High'].max() - df['Low'].min()):.2f}")
+                if df is not None and 'High' in df.columns and 'Low' in df.columns:
+                    try:
+                        high_val = df['High'].max()
+                        low_val = df['Low'].min()
+                        if pd.notna(high_val) and pd.notna(low_val):
+                            price_range_val = float(high_val) - float(low_val)
+                    except Exception:
+                        price_range_val = None
+
+                if price_range_val is not None:
+                    st.write(f"- Price Range: {currency_symbol}{price_range_val:.2f}")
+                else:
+                    st.write("- Price Range: Data not available")
             
             with col2:
                 st.markdown("**📊 Trading Statistics:**")
@@ -1122,6 +1134,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
