@@ -1002,7 +1002,19 @@ def main():
                     st.write(f"- Lowest Price: {currency_symbol}{low_val:.2f}")
                 except (ValueError, TypeError):
                     st.write("- Lowest Price: Data not available")
-                st.write(f"- Average Price: {currency_symbol}{df['Close'].mean():.2f}")
+                avg_price_val = None
+                if df is not None and 'Close' in df.columns and not df['Close'].empty:
+                    try:
+                        val = df['Close'].mean()
+                        if pd.notna(val):
+                            avg_price_val = float(val)
+                    except Exception:
+                        avg_price_val = None
+
+                if avg_price_val is not None:
+                    st.write(f"- Average Price: {currency_symbol}{avg_price_val:.2f}")
+                else:
+                    st.write("- Average Price: Data not available")
                 st.write(f"- Price Range: {currency_symbol}{(df['High'].max() - df['Low'].min()):.2f}")
             
             with col2:
@@ -1110,5 +1122,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
