@@ -117,11 +117,15 @@ st.markdown("""
             background: #f9f9f9;  /* adjust for your theme */
             color: #000;
         }
-        section[data-testid="stSidebar"] .stSelectbox label,
-        section[data-testid="stSidebar"] .stRadio label,
-        section[data-testid="stSidebar"] .stSlider label {
-            color: #000 !important;
-            font-weight: 500;
+        section[data-testid="stSidebar"] {
+            background: #f9f9f9;
+            color: #000000;
+        }
+        section[data-testid="stSidebar"] * {
+            color: #000000 !important;
+        }
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {
+            color: #000000 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -657,7 +661,13 @@ def main():
                 current_price = df['Close'].iloc[-1]
                 currency = stock_info.get('currency', 'USD')
                 currency_symbol = '$' if currency == 'USD' else 'INR ' if currency == 'INR' else currency
-                st.metric("Current Price", f"{currency_symbol}{current_price:.2f}")
+                if current_price is not None:
+                    try:
+                        st.metric("Current Price", f"{currency_symbol}{float(current_price):.2f}")
+                    except Exception:
+                        st.metric("Current Price", f"{currency_symbol}{current_price}")
+                    else:
+                        st.metric("Current Price", "Data not available")
             
             with col2:
                 price_change = df['Close'].iloc[-1] - df['Close'].iloc[-2] if len(df) > 1 else 0
