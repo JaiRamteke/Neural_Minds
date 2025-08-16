@@ -1031,10 +1031,46 @@ def main():
             
             with col2:
                 st.markdown("**📊 Trading Statistics:**")
-                st.write(f"- Average Volume: {df['Volume'].mean():,.0f}")
-                st.write(f"- Max Volume: {df['Volume'].max():,.0f}")
-                st.write(f"- Total Data Points: {len(df):,}")
-                st.write(f"- Date Range: {df['Date'].min().strftime('%Y-%m-%d')} to {df['Date'].max().strftime('%Y-%m-%d')}")
+                # --- Average Volume ---
+                avg_vol = None
+                if df is not None and 'Volume' in df.columns and not df['Volume'].empty:
+                    try:
+                        val = df['Volume'].mean()
+                        if pd.notna(val):
+                            avg_vol = int(val)
+                    except Exception:
+                        avg_vol = None
+
+                st.write(f"- Average Volume: {avg_vol:,.0f}" if avg_vol is not None else "- Average Volume: Data not available")
+
+                # --- Max Volume ---
+                max_vol = None
+                if df is not None and 'Volume' in df.columns and not df['Volume'].empty:
+                    try:
+                        val = df['Volume'].max()
+                        if pd.notna(val):
+                            max_vol = int(val)
+                    except Exception:
+                        max_vol = None
+
+                st.write(f"- Max Volume: {max_vol:,.0f}" if max_vol is not None else "- Max Volume: Data not available")
+
+                # --- Total Data Points ---
+                st.write(f"- Total Data Points: {len(df):,}" if df is not None else "- Total Data Points: Data not available")
+
+                # --- Date Range ---
+                date_min, date_max = None, None
+                if df is not None and 'Date' in df.columns and not df['Date'].empty:
+                    try:
+                        date_min = df['Date'].min()
+                        date_max = df['Date'].max()
+                    except Exception:
+                        date_min, date_max = None, None
+
+                if date_min is not None and date_max is not None and not pd.isna(date_min) and not pd.isna(date_max):
+                    st.write(f"- Date Range: {date_min.strftime('%Y-%m-%d')} to {date_max.strftime('%Y-%m-%d')}")
+                else:
+                    st.write("- Date Range: Data not available")
         
         # Warning disclaimer
         st.markdown("""
@@ -1134,6 +1170,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
