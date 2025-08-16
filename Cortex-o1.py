@@ -658,7 +658,8 @@ def main():
                 current_price = df['Close'].iloc[-1]
                 currency = stock_info.get('currency', 'USD')
                 currency_symbol = '$' if currency == 'USD' else 'INR ' if currency == 'INR' else currency
-            
+                st.metric("Current Price", f"{currency_symbol}{current_price:.2f}")
+                
             with col2:
                 price_change = df['Close'].iloc[-1] - df['Close'].iloc[-2] if len(df) > 1 else 0
                 pct_change = (price_change / df['Close'].iloc[-2] * 100) if len(df) > 1 and df['Close'].iloc[-2] != 0 else 0
@@ -1052,4 +1053,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
