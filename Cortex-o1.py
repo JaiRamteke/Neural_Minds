@@ -213,16 +213,25 @@ def test_api_connections():
     return status
 
 @st.cache_data(ttl=300)
-def get_yfinance_data(ticker, period):
+def fetch_stock_data_yfinance(ticker, period="1y"):
     try:
-        df = yf.download(ticker, period=period, interval="1d")
-        if df.empty:
-            return None, None
-        # Last available close price as current price
-        current_price = df['Close'].iloc[-1]
-        return df, float(current_price)
-    except Exception:
-        return None, None
+        ticker = map_ticker_for_source(ticker, "yfinance")
+        yf_period_map = {'1mo': '1mo','3mo': '3mo','6mo': '6mo','1y': '1y','2y': '2y','5y': '5y'}
+        yf_period = yf_period_map.get(period, '1y')
+        df = yf.download(ticker, period=yf_period, interval="1d", auto_adjust=False)
+        if df.empty: raise Exception("No data returned from yfinance")
+        df.reset_index(inplace=True)
+        df = df[['Date','Open','High','Low','Close','Volume']]
+        df.attrs = {'source':'yfinance','ticker':ticker}
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    except Exception as e:
+        st.warning(f"yfinance error: {str(e)}. Using sample data.")
+        return create_sample_data(ticker, period)
+
+    except Exception as e:
+        st.warning(f"yfinance error: {str(e)}. Using sample data.")
+        return create_sample_data(ticker, period)
 
 def map_ticker_for_source(ticker: str, source: str) -> str:
     """
@@ -242,29 +251,31 @@ def map_ticker_for_source(ticker: str, source: str) -> str:
     return ticker
 
 @st.cache_data(ttl=300)
-def get_alpha_vantage_data(symbol, api_key, outputsize="compact"):
+def fetch_stock_data_unified(ticker, period="1y"):
     try:
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={api_key}&outputsize={outputsize}"
-        r = requests.get(url)
-        data = r.json()
-        if "Time Series (Daily)" not in data:
-            return None, None
-        df = pd.DataFrame.from_dict(data["Time Series (Daily)"], orient="index")
-        df = df.rename(columns={
-            "1. open": "Open",
-            "2. high": "High",
-            "3. low": "Low",
-            "4. close": "Close",
-            "5. volume": "Volume"
-        })
+        ticker = map_ticker_for_source(ticker, "alpha_vantage")
+        time.sleep(1)
+        params = {'function':'TIME_SERIES_DAILY','symbol':ticker,'apikey':ALPHA_VANTAGE_API_KEY,
+                  'outputsize':'full','datatype':'json'}
+        response = requests.get(AV_BASE_URL, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if 'Error Message' in data: raise Exception(data['Error Message'])
+        if 'Time Series (Daily)' not in data: raise Exception("No data found in response")
+        df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index')
+        df.columns = ['Open','High','Low','Close','Volume']
         df = df.astype(float)
         df.index = pd.to_datetime(df.index)
-        df = df.sort_index()
-        # Current price from last close
-        current_price = df["Close"].iloc[-1]
-        return df, float(current_price)
-    except Exception:
-        return None, None
+        df = df.sort_index().reset_index().rename(columns={'index':'Date'})
+        days = get_period_days(period)
+        start_date = datetime.now()-timedelta(days=days)
+        df = df[df['Date']>=start_date]
+        df.attrs['source']='alpha_vantage'
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    except Exception as e:
+        st.warning(f"Alpha Vantage API error: {str(e)}. Using sample data.")
+        return create_sample_data(ticker, period)
 
 def get_period_days(period):
     return {'1mo':30,'3mo':90,'6mo':180,'1y':365,'2y':730,'5y':1825}.get(period,365)
