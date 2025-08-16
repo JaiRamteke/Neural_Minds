@@ -28,7 +28,7 @@ AV_BASE_URL = 'https://www.alphavantage.co/query'
 # Page configuration
 st.set_page_config(
     page_title="Neural Minds",
-    page_icon="📈",
+    page_icon="brain.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -1192,77 +1192,64 @@ def main():
     else:
         # Welcome screen
         st.markdown("""
-        ##              🚀 Welcome to Cortex-o1 Predictive Model!
-        
-        ### ✨ Premium Features:
-        - **🔄 Multi-API Integration**: Seamless data fetching from multiple sources
-        - **🤖 Advanced AI Models**: Machine learning-powered predictions
-        - **📊 Comprehensive Analysis**: Technical indicators and market insights
-        - **🎨 Premium Interface**: Beautiful, responsive dark theme
-        - **📈 Real-time Charts**: Interactive visualizations with Plotly
-        - **🔍 Performance Metrics**: Detailed model evaluation and statistics
-        
-        ### 🌍 Global Market Coverage:
-        
-        **🇺🇸 US Stocks:**
-        - Apple (AAPL), Google (GOOGL), Microsoft (MSFT)
-        - Tesla (TSLA), Amazon (AMZN), NVIDIA (NVDA)
-        - Meta (META), Netflix (NFLX), JPMorgan (JPM), Visa (V)
-        
-        **🇮🇳 Indian Stocks:**
-        - Reliance Industries, TCS, Infosys
-        - HDFC Bank, Wipro, ITC, SBI
-        
-        ### 🎯 How It Works:
-        
-        1. **📊 Select Your Stock**: Choose from popular stocks or enter any ticker
-        2. **⏱️ Choose Time Period**: Analyze from 1 month to 5 years of data
-        3. **🤖 AI Analysis**: Our advanced ML models analyze patterns
-        4. **🔮 Get Predictions**: Receive next-day price predictions with confidence levels
-        5. **📈 Visualize Results**: Explore interactive charts and detailed analytics
-        
-        ### 🛠️ Technical Features:
-        
-        **🧠 Machine Learning:**
-        - Random Forest Regression
-        - Feature Engineering with Technical Indicators
-        - Cross-validation and Performance Metrics
-        
-        **📊 Technical Analysis:**
-        - Moving Averages (20-day, 50-day)
-        - Relative Strength Index (RSI)
-        - Volume Analysis
-        - Price Change Patterns
-        
-        **📈 Visualizations:**
-        - Interactive Price Charts
-        - Volume Analysis
-        - RSI Momentum Indicators
-        - Feature Importance Analysis
-        
-        ### 🔧 Quick Start:
-        
-        1. **🔍 Test APIs**: Check the "API Status Check" section
-        2. **📊 Configure**: Select your preferred stock and time period
-        3. **🚀 Analyze**: Click "Predict Stock Price" to begin
-        4. **📈 Explore**: Navigate through different tabs for comprehensive analysis
-        
-        ### 💡 Pro Tips:
-        
-        - **Better Predictions**: Use longer time periods (1y+) for more reliable models
-        - **Market Context**: Consider external factors affecting stock prices
-        - **Multiple Timeframes**: Compare predictions across different periods
-        - **Risk Management**: Always diversify your investment portfolio
-        
-        ### 👈 Ready to Start?
-        Use the sidebar to configure your analysis settings and begin exploring the power of AI-driven stock prediction!
-        
-        ---
-        
-        <div style="text-align: center; color: #666; margin-top: 2rem;">
-            Built with ❤️ using Streamlit, scikit-learn, and Plotly
-        </div>
-        """)
+            <h2 style='text-align: center;'> Cortex-o1 Predictive Model!</h2>
+            """,
+            unsafe_allow_html=True
+    )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+                ### ✨ Premium Features:
+                - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
+                - 🤖 **Advanced AI Models**: Machine learning-powered predictions
+                - 📊 **Comprehensive Analysis**: Technical indicators & market insights
+                - 🎨 **Premium Interface**: Beautiful, responsive dark theme
+                - 📈 **Real-time Charts**: Interactive Plotly visualizations
+                - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
+
+                ### 🌍 Global Market Coverage:
+                **🇺🇸 US Stocks:**
+                - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
+                - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
+                - Meta (META), Netflix (NFLX)
+                - JPMorgan (JPM), Visa (V)
+                - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
+
+                **🇮🇳 Indian Stocks:**
+                - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
+                - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
+                - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
+                - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
+                - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
+                """)
+
+        with col2:
+            st.markdown("""
+                ### 🎯 How It Works:
+                1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
+                2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
+                3. 🤖 **AI Analysis**: ML models learn market patterns  
+                4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
+                5. 📈 **Visualize Results**: Interactive charts & detailed analytics
+
+                ### 🛠️ Technical Features:
+                - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
+                - 🔁 **Cross-validation**: Performance metrics built-in  
+                - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
+                - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
+
+                ### 💡 Pro Tips:
+                - 📅 Use longer timeframes (1y+) for more reliable predictions  
+                - 🌍 Consider external market/economic context  
+                - ⏳ Compare predictions across different timeframes  
+                - 🛡️ Always diversify your portfolio  
+
+                ---
+                👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+                """)
+
 
 if __name__ == "__main__":
     main()
