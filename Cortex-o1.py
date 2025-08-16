@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -229,33 +228,12 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         st.warning(f"yfinance error: {str(e)}. Using sample data.")
         return create_sample_data(ticker, period)
 
-    except Exception as e:
-        st.warning(f"yfinance error: {str(e)}. Using sample data.")
-        return create_sample_data(ticker, period)
-
-def map_ticker_for_source(ticker: str, source: str) -> str:
-    """
-    Map ticker to correct format depending on source.
-    yfinance → uses .NS for Indian stocks
-    Alpha Vantage → uses .BSE for Indian stocks (no .NSE support)
-    """
-    base = ticker.split('.')[0].upper()
-
-    # Convert Indian stock format for yfinance
-    if ticker.endswith(".NSE"):
-        ticker = ticker.replace(".NSE", ".NS")
-
-    # Convert ticker for Alpha Vantage
-        ticker = map_ticker_for_source(ticker, "alpha_vantage")
-
-    return ticker
-
 @st.cache_data(ttl=300)
 def fetch_stock_data_unified(ticker, period="1y"):
     try:
-        ticker = map_ticker_for_source(ticker, "alpha_vantage")
+        mapped_ticker = map_ticker_for_source(ticker, "alpha_vantage")
         time.sleep(1)
-        params = {'function':'TIME_SERIES_DAILY','symbol':ticker,'apikey':ALPHA_VANTAGE_API_KEY,
+        params = {'function':'TIME_SERIES_DAILY','symbol':mapped_ticker,'apikey':ALPHA_VANTAGE_API_KEY,
                   'outputsize':'full','datatype':'json'}
         response = requests.get(AV_BASE_URL, params=params, timeout=30)
         response.raise_for_status()
@@ -279,7 +257,6 @@ def fetch_stock_data_unified(ticker, period="1y"):
 
 def get_period_days(period):
     return {'1mo':30,'3mo':90,'6mo':180,'1y':365,'2y':730,'5y':1825}.get(period,365)
-    return period_map.get(period, 365)
 
 def create_sample_data(ticker, period):
     """Create realistic sample data when APIs fail"""
@@ -506,14 +483,11 @@ def main():
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Advanced Market Analysis & AI-Powered Prediction Platform</p>', unsafe_allow_html=True)
 
-    # Initialize variables (🔑 this is where you add it)
+    # Initialize variables (🔑 init once here)
     df, current_price = None, None
-    current_price_val = None    # <-- ADD THIS
-    price_change, pct_change = None, None
     volatility = None
-    avg_volume = None
-    high_52w, low_52w = None, None
-
+    current_price_val = None
+    currency_symbol = '$'
 
     # API Status Check
     with st.expander("🔍 API Status Check", expanded=False):
@@ -621,21 +595,21 @@ def main():
         
         # Fetch stock data
         with st.spinner(f"🔄 Fetching stock data from {data_source_choice}..."):
-            df = None
-        if data_source_choice == "yfinance":
-            if YFINANCE_AVAILABLE:
-                df = fetch_stock_data_yfinance(ticker, period=period)
-            if df is None or df.empty:
-                st.warning("⚠️ yfinance failed, trying Alpha Vantage...")
+            if data_source_choice == "yfinance":
+                if YFINANCE_AVAILABLE:
+                    df = fetch_stock_data_yfinance(ticker, period=period)
+                if df is None or df.empty:
+                    st.warning("⚠️ yfinance failed, trying Alpha Vantage...")
+                    df = fetch_stock_data_unified(ticker, period=period)
+            else:
                 df = fetch_stock_data_unified(ticker, period=period)
-        else:
-            df = fetch_stock_data_unified(ticker, period=period)
-            if (df is None or df.empty) and YFINANCE_AVAILABLE:
-                st.warning("⚠️ Alpha Vantage failed, trying yfinance...")
-                df = fetch_stock_data_yfinance(ticker, period=period)
-        if df is None or df.empty:
-            st.error("❌ Unable to fetch data from any source. Falling back to sample data.")
-            df = create_sample_data(ticker, period)
+                if (df is None or df.empty) and YFINANCE_AVAILABLE:
+                    st.warning("⚠️ Alpha Vantage failed, trying yfinance...")
+                    df = fetch_stock_data_yfinance(ticker, period=period)
+
+            if df is None or df.empty:
+                st.error("❌ Unable to fetch data from any source. Falling back to sample data.")
+                df = create_sample_data(ticker, period)
         
         # Process the data
         data_source = df.attrs.get('source', 'unknown')
@@ -651,8 +625,19 @@ def main():
         else:
             st.success(f"✅ Successfully loaded {len(df)} data points for {ticker} from {data_source}")
         
-        # Get stock info
+        # Get stock info and set currency/curr symbol ONCE
         stock_info = get_stock_info(ticker)
+        currency = stock_info.get('currency', 'USD')
+        currency_symbol = '$' if currency == 'USD' else 'INR '
+
+        # Safe, single-point assignment of current_price_val
+        if df is not None and not df.empty and 'Close' in df.columns:
+            try:
+                current_price_val = float(df['Close'].iloc[-1])
+            except Exception:
+                current_price_val = None
+        else:
+            current_price_val = None
         
         with tab1:
             # Stock information
@@ -665,45 +650,33 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                current_price_val = None
-                if df is not None and not df.empty:
-                    # fallback: last close from df
-                    current_price_val = df['Close'].iloc[-1]
-                else:
-                    current_price_val = current_price
-
+                cp = current_price_val
                 try:
-                    if current_price_val is not None and not pd.isna(current_price_val):
-                        current_price_val = float(current_price_val)
-                        st.metric("Current Price", f"{currency_symbol}{current_price_val:.2f}")
+                    if cp is not None and not pd.isna(cp):
+                        st.metric("Current Price", f"{currency_symbol}{float(cp):.2f}")
                     else:
                         st.metric("Current Price", "Data not available")
                 except (ValueError, TypeError):
                     st.metric("Current Price", "Data not available")
             
             with col2:
-                price_change = df['Close'].iloc[-1] - df['Close'].iloc[-2] if len(df) > 1 else 0
-                pct_change = 0
+                price_change = 0.0
+                pct_change = 0.0
                 if df is not None and len(df) > 1:
-                    prev_close = df['Close'].iloc[-2]
-                    last_close = df['Close'].iloc[-1]
-                try:
-                    prev_close = float(prev_close)
-                    last_close = float(last_close)
-                    if prev_close != 0:
+                    try:
+                        prev_close = float(df['Close'].iloc[-2])
+                        last_close = float(df['Close'].iloc[-1])
                         price_change = last_close - prev_close
-                        pct_change = (price_change / prev_close) * 100
-                except (ValueError, TypeError):
-                    pct_change = 0
-
+                        pct_change = (price_change / prev_close) * 100 if prev_close != 0 else 0.0
+                    except Exception:
+                        price_change, pct_change = 0.0, 0.0
                 st.metric("Price Change", f"{currency_symbol}{price_change:.2f}", f"{pct_change:.2f}%")
             
             with col3:
                 volume = None
                 if df is not None and 'Volume' in df.columns and len(df) > 0:
-                    volume = df['Volume'].iloc[-1]
                     try:
-                        volume = int(float(volume))
+                        volume = int(float(df['Volume'].iloc[-1]))
                     except (ValueError, TypeError):
                         volume = None
 
@@ -713,10 +686,10 @@ def main():
                     st.metric("Volume", "Data not available")
             
             with col4:
-                if volatility is not None and not pd.isna(volatility):
+                if volatility is not None:
                     try:
-                        volatility = float(volatility)
-                        st.metric("Volatility", f"{volatility:.2f}%")
+                        vol_val = float(volatility)
+                        st.metric("Volatility", f"{vol_val:.2f}%")
                     except (ValueError, TypeError):
                         st.metric("Volatility", "Data not available")
                 else:
@@ -745,11 +718,7 @@ def main():
                         high_52w = float(df['High'].max())
                     except (ValueError, TypeError):
                         high_52w = None
-
-                if high_52w is not None and not pd.isna(high_52w):
-                    st.metric("52W High", f"{currency_symbol}{high_52w:.2f}")
-                else:
-                    st.metric("52W High", "Data not available")
+                st.metric("52W High", f"{currency_symbol}{high_52w:.2f}" if high_52w is not None else "Data not available")
             
             with col2:
                 low_52w = None
@@ -758,11 +727,7 @@ def main():
                         low_52w = float(df['Low'].min())
                     except (ValueError, TypeError):
                         low_52w = None
-
-                if low_52w is not None and not pd.isna(low_52w):
-                    st.metric("52W Low", f"{currency_symbol}{low_52w:.2f}")
-                else:
-                    st.metric("52W Low", "Data not available")
+                st.metric("52W Low", f"{currency_symbol}{low_52w:.2f}" if low_52w is not None else "Data not available")
             
             with col3:
                 avg_volume_val = None
@@ -771,11 +736,7 @@ def main():
                         avg_volume_val = float(df['Volume'].mean())
                     except (ValueError, TypeError):
                         avg_volume_val = None
-
-                if avg_volume_val is not None and not pd.isna(avg_volume_val):
-                    st.metric("Avg Volume", f"{avg_volume_val:,.0f}")
-                else:
-                    st.metric("Avg Volume", "Data not available")
+                st.metric("Avg Volume", f"{avg_volume_val:,.0f}" if avg_volume_val is not None else "Data not available")
             
             with col4:
                 if 'RSI' in df.columns and not df['RSI'].isna().all():
@@ -809,31 +770,39 @@ def main():
             st.markdown("### 🔮 Next Day Prediction")
             next_day_pred = predict_next_price(model, scaler, df)
             
-            if next_day_pred:
-                current_price = df['Close'].iloc[-1]
-                price_change = next_day_pred - current_price
-                percentage_change = (price_change / current_price) * 100
+            if next_day_pred is not None:
+                try:
+                    current_price_num = float(df['Close'].iloc[-1])
+                    price_change = float(next_day_pred) - current_price_num
+                    percentage_change = (price_change / current_price_num) * 100 if current_price_num != 0 else 0.0
+                except Exception:
+                    current_price_num, price_change, percentage_change = None, None, None
                 
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    st.metric("Current Price", f"{currency_symbol}{current_price:.2f}")
+                    st.metric("Current Price", f"{currency_symbol}{current_price_num:.2f}" if current_price_num is not None else "—")
                 
                 with col2:
-                    st.metric("Predicted Price", f"{currency_symbol}{next_day_pred:.2f}", f"{currency_symbol}{price_change:.2f}")
+                    st.metric(
+                        "Predicted Price",
+                        f"{currency_symbol}{float(next_day_pred):.2f}",
+                        f"{currency_symbol}{price_change:.2f}" if price_change is not None else "—"
+                    )
                 
                 with col3:
-                    st.metric("Expected Change", f"{percentage_change:.2f}%")
+                    st.metric("Expected Change", f"{percentage_change:.2f}%" if percentage_change is not None else "—")
                 
                 # Prediction confidence
-                if percentage_change > 2:
-                    st.success("🟢 Strong Bullish Signal")
-                elif percentage_change > 0:
-                    st.info("🔵 Mild Bullish Signal")
-                elif percentage_change > -2:
-                    st.warning("🟡 Neutral Signal")
-                else:
-                    st.error("🔴 Bearish Signal")
+                if percentage_change is not None:
+                    if percentage_change > 2:
+                        st.success("🟢 Strong Bullish Signal")
+                    elif percentage_change > 0:
+                        st.info("🔵 Mild Bullish Signal")
+                    elif percentage_change > -2:
+                        st.warning("🟡 Neutral Signal")
+                    else:
+                        st.error("🔴 Bearish Signal")
         
         with tab3:
             # Charts and visualizations
@@ -989,7 +958,6 @@ def main():
             
             # Format dataframe for display
             display_df = df.tail(50).copy()
-            currency_symbol = '$' if stock_info.get('currency', 'USD') == 'USD' else 'INR'
             
             # Format columns for display
             if 'Date' in display_df.columns:
@@ -1025,7 +993,7 @@ def main():
                 st.write(f"- Highest Price: {currency_symbol}{df['High'].max():.2f}")
                 st.write(f"- Lowest Price: {currency_symbol}{df['Low'].min():.2f}")
                 st.write(f"- Average Price: {currency_symbol}{df['Close'].mean():.2f}")
-                st.write(f"- Price Range: {currency_symbol}{df['High'].max() - df['Low'].min():.2f}")
+                st.write(f"- Price Range: {currency_symbol}{(df['High'].max() - df['Low'].min()):.2f}")
             
             with col2:
                 st.markdown("**📊 Trading Statistics:**")
@@ -1132,4 +1100,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
