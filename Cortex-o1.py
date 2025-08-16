@@ -553,7 +553,7 @@ def main():
         st.markdown("#### 🚀 Platform Status")
         # Data source selection
         st.markdown("#### 📡 Data Source")
-        data_source_choice = st.radio(
+        data_source_choice = st.selectbox(
             "Select Data Source",
             ["Alpha Vantage", "yfinance"],
             index=0,
@@ -997,7 +997,7 @@ def main():
     else:
         # Welcome screen
         st.markdown("""
-        ##              🚀 Welcome to Cortex-o1 Predictive Model!
+        ##                Welcome to Cortex-o1 Predictive Model!
         
         ### ✨ Premium Features:
         - **🔄 Multi-API Integration**: Seamless data fetching from multiple sources
@@ -1071,4 +1071,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
