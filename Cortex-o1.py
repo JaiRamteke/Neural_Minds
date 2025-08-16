@@ -6,6 +6,8 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import requests
 import time
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -446,6 +448,11 @@ def train_model(df):
             random_state=42,
             n_jobs=-1
         )
+
+        # Cross-validation for more reliable performance
+        cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='r2')
+        st.write(f"Cross-validated R² (5-fold): {np.mean(cv_scores):.3f}")
+
         model.fit(X_train_scaled, y_train)
         
         # Make predictions
@@ -463,6 +470,10 @@ def train_model(df):
             'train_size': len(X_train),
             'test_size': len(X_test)
         }
+
+        # Display metrics in Streamlit
+        st.subheader("Model Performance Metrics")
+        st.write(metrics)
         
         # Feature importance
         feature_importance = pd.DataFrame({
@@ -470,6 +481,13 @@ def train_model(df):
             'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
         
+        # Plot feature importance
+        st.subheader("Feature Importance")
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x='importance', y='feature', data=feature_importance, palette='viridis')
+        plt.title("Feature Importance")
+        st.pyplot(plt)
+
         return model, scaler, metrics, feature_importance
         
     except Exception as e:
