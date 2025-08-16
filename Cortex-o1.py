@@ -590,10 +590,33 @@ def main():
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
 
-        st.markdown('<div class="api-status api-working">💎 Premium API Access Enabled</div>', unsafe_allow_html=True)
+        st.markdown(
+            """
+            <style>
+            .api-badge {
+                background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                padding: 8px 18px;
+                border-radius: 25px;
+                font-size: 15px;
+                font-weight: 600;
+                display: inline-block;
+                box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(79,172,254,0.6); }
+                70% { box-shadow: 0 0 0 12px rgba(79,172,254,0); }
+                100% { box-shadow: 0 0 0 0 rgba(79,172,254,0); }
+            }
+            </style>
+
+            <div class="api-badge">💎 Premium API Access Enabled</div>
+            """,
+            unsafe_allow_html=True
+)
         
-        # Platform Status
-        st.markdown("#### 🚀 Platform Status")
         # Data source selection
         st.markdown("#### 📡 Data Source")
         data_source_choice = st.selectbox(
@@ -1246,11 +1269,10 @@ def main():
                 - ⏳ Compare predictions across different timeframes  
                 - 🛡️ Always diversify your portfolio  
 
-        ---
-                👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+---
+👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
                 """)
 
 
 if __name__ == "__main__":
     main()
-
