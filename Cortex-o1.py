@@ -505,12 +505,6 @@ def main():
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Advanced Market Analysis & AI-Powered Prediction Platform</p>', unsafe_allow_html=True)
 
-    # Sidebar
-    st.sidebar.header("Settings")
-    data_source_choice = st.sidebar.radio("Select Data Source", ["Alpha Vantage", "yfinance"])
-    ticker = st.sidebar.text_input("Stock Ticker", "AAPL")
-    period = st.sidebar.selectbox("Period (for yfinance)", ["1y", "2y", "5y"], index=0)
-
     # Initialize variables (🔑 this is where you add it)
     df, current_price = None, None
     volatility = None   # <-- ADD THIS LINE
@@ -1099,3 +1093,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
