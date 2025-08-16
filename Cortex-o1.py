@@ -110,6 +110,26 @@ st.markdown("""
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
+        /* App background */
+        .stApp {
+            background-color: #fdf6f6;  /* very light maroon background */
+        }
+
+        /* Sidebar background */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #4a0e0e, #880e4f);
+            color: white;
+        }
+
+        /* Sidebar labels */
+        section[data-testid="stSidebar"] .stSelectbox label,
+        section[data-testid="stSidebar"] .stRadio label,
+        section[data-testid="stSidebar"] .stSlider label {
+            color: white !important;
+            font-weight: 500;
+        }
+
+        
         /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
@@ -117,6 +137,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Force sidebar always visible (disable collapse button)
+st.markdown("""
+    <style>
+        section[data-testid="stSidebar"] > div {
+            height: 100%;
+        }
+        button[title="Collapse sidebar"] {
+            display: none;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Enhanced stock tickers
 RELIABLE_TICKERS = {
@@ -142,6 +173,18 @@ RELIABLE_TICKERS = {
         "SBIN.NSE": "State Bank of India"
     }
 }
+
+def map_ticker_for_source(ticker: str, source: str) -> str:
+    base = ticker.split('.')[0].upper()
+    if source == "yfinance":
+        if ticker.endswith(".NSE"):
+            return base + ".NS"
+        return base
+    if source == "alpha_vantage":
+        if ticker.endswith(".NSE"):
+            return base + ".BSE"
+        return base
+    return ticker
 
 def test_api_connections():
     """Test both API connections and return status"""
@@ -192,18 +235,20 @@ def test_api_connections():
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_yfinance(ticker, period="1y"):
-    """Fetch stock data from yfinance with fallback to sample data"""
     try:
-        # Convert Indian stock format for yfinance
-        if ticker.endswith(".NSE"):
-            ticker = ticker.replace(".NSE", ".NS")
-
-        # Map to yfinance-friendly period
-        yf_period_map = {
-            '1mo': '1mo', '3mo': '3mo', '6mo': '6mo',
-            '1y': '1y', '2y': '2y', '5y': '5y'
-        }
+        ticker = map_ticker_for_source(ticker, "yfinance")
+        yf_period_map = {'1mo': '1mo','3mo': '3mo','6mo': '6mo','1y': '1y','2y': '2y','5y': '5y'}
         yf_period = yf_period_map.get(period, '1y')
+        df = yf.download(ticker, period=yf_period, interval="1d", auto_adjust=False)
+        if df.empty: raise Exception("No data returned from yfinance")
+        df.reset_index(inplace=True)
+        df = df[['Date','Open','High','Low','Close','Volume']]
+        df.attrs = {'source':'yfinance','ticker':ticker}
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    except Exception as e:
+        st.warning(f"yfinance error: {str(e)}. Using sample data.")
+        return create_sample_data(ticker, period)
 
         # Download data
         df = yf.download(ticker, period=yf_period, interval="1d", auto_adjust=False)
@@ -223,72 +268,52 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         st.warning(f"yfinance error: {str(e)}. Using sample data.")
         return create_sample_data(ticker, period)
 
+def map_ticker_for_source(ticker: str, source: str) -> str:
+    """
+    Map ticker to correct format depending on source.
+    yfinance → uses .NS for Indian stocks
+    Alpha Vantage → uses .BSE for Indian stocks (no .NSE support)
+    """
+    base = ticker.split('.')[0].upper()
 
+    # Convert Indian stock format for yfinance
+    if ticker.endswith(".NSE"):
+        ticker = ticker.replace(".NSE", ".NS")
+
+    # Convert ticker for Alpha Vantage
+        ticker = map_ticker_for_source(ticker, "alpha_vantage")
+
+    return ticker
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_unified(ticker, period="1y"):
-    """Fetch stock data from Alpha Vantage with fallback to sample data"""
     try:
-        # Ensure proper format for Alpha Vantage
-        if ticker.endswith('.BO') or ticker.endswith('.NS'):
-            ticker = ticker.split('.')[0] + '.NSE'
-            
-        # Add delay to respect rate limits
+        ticker = map_ticker_for_source(ticker, "alpha_vantage")
         time.sleep(1)
-        
-        params = {
-            'function': 'TIME_SERIES_DAILY',
-            'symbol': ticker,
-            'apikey': ALPHA_VANTAGE_API_KEY,
-            'outputsize': 'full',
-            'datatype': 'json'
-        }
-        
+        params = {'function':'TIME_SERIES_DAILY','symbol':ticker,'apikey':ALPHA_VANTAGE_API_KEY,
+                  'outputsize':'full','datatype':'json'}
         response = requests.get(AV_BASE_URL, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
-        
-        if 'Error Message' in data:
-            raise Exception(data['Error Message'])
-            
-        if 'Time Series (Daily)' not in data:
-            raise Exception("No data found in response")
-            
-        # Convert to DataFrame
+        if 'Error Message' in data: raise Exception(data['Error Message'])
+        if 'Time Series (Daily)' not in data: raise Exception("No data found in response")
         df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index')
-        df.rename(columns={
-            '1. open': 'Open',
-            '2. high': 'High',
-            '3. low': 'Low',
-            '4. close': 'Close',
-            '5. volume': 'Volume'
-        }, inplace=True)
+        df.columns = ['Open','High','Low','Close','Volume']
         df = df.astype(float)
         df.index = pd.to_datetime(df.index)
-        df = df.sort_index()
-        
-        # Reset index to make Date a column
-        df = df.reset_index()
-        df.rename(columns={'index': 'Date'}, inplace=True)
-        
-        # Filter for requested period
+        df = df.sort_index().reset_index().rename(columns={'index':'Date'})
         days = get_period_days(period)
-        start_date = datetime.now() - timedelta(days=days)
-        df = df[df['Date'] >= start_date]
-        
-        df.attrs['source'] = 'alpha_vantage'
+        start_date = datetime.now()-timedelta(days=days)
+        df = df[df['Date']>=start_date]
+        df.attrs['source']='alpha_vantage'
+        df['Date'] = pd.to_datetime(df['Date'])
         return df
-        
     except Exception as e:
         st.warning(f"Alpha Vantage API error: {str(e)}. Using sample data.")
         return create_sample_data(ticker, period)
 
 def get_period_days(period):
-    """Convert period string to number of days"""
-    period_map = {
-        '1mo': 30, '3mo': 90, '6mo': 180,
-        '1y': 365, '2y': 730, '5y': 1825
-    }
+    return {'1mo':30,'3mo':90,'6mo':180,'1y':365,'2y':730,'5y':1825}.get(period,365)
     return period_map.get(period, 365)
 
 def create_sample_data(ticker, period):
@@ -417,59 +442,13 @@ def prepare_features(df):
     return X, y, existing_features
 
 def train_model(df):
-    """Train Random Forest model for NEXT-DAY close"""
+    """Train Random Forest model"""
     try:
-        df_t = df.copy()
-        df_t['Target'] = df_t['Close'].shift(-1)
-        df_t = df_t.dropna()
-
-        X, _, feature_names = prepare_features(df_t)
-        y = df_t['Target'].copy()
-
+        X, y, feature_names = prepare_features(df)
+        
         if X.empty or y.empty:
             st.error("Insufficient data for training")
             return None, None, None, None
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, shuffle=False
-        )
-
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
-
-        model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=10,
-            random_state=42,
-            n_jobs=-1
-        )
-        model.fit(X_train_scaled, y_train)
-
-        y_train_pred = model.predict(X_train_scaled)
-        y_test_pred = model.predict(X_test_scaled)
-
-        metrics = {
-            'train_rmse': np.sqrt(mean_squared_error(y_train, y_train_pred)),
-            'test_rmse': np.sqrt(mean_squared_error(y_test, y_test_pred)),
-            'train_mae': mean_absolute_error(y_train, y_train_pred),
-            'test_mae': mean_absolute_error(y_test, y_test_pred),
-            'train_r2': r2_score(y_train, y_train_pred),
-            'test_r2': r2_score(y_test, y_test_pred),
-            'train_size': len(X_train),
-            'test_size': len(X_test)
-        }
-
-        feature_importance = pd.DataFrame({
-            'feature': feature_names,
-            'importance': model.feature_importances_
-        }).sort_values('importance', ascending=False)
-
-        return model, scaler, metrics, feature_importance
-
-    except Exception as e:
-        st.error(f"Error training model: {str(e)}")
-        return None, None, None, None
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
@@ -668,17 +647,21 @@ def main():
         
         # Fetch stock data
         with st.spinner(f"🔄 Fetching stock data from {data_source_choice}..."):
-            if data_source_choice == "yfinance":
-                if not YFINANCE_AVAILABLE:
-                    st.error("❌ yfinance is not installed or unavailable.")
-                    return
+            df = None
+        if data_source_choice == "yfinance":
+            if YFINANCE_AVAILABLE:
                 df = fetch_stock_data_yfinance(ticker, period=period)
-            else:  # Alpha Vantage
+            if df is None or df.empty:
+                st.warning("⚠️ yfinance failed, trying Alpha Vantage...")
                 df = fetch_stock_data_unified(ticker, period=period)
-            
-        if df is None:
-            st.error("❌ Unable to fetch data from any source. Please check the ticker symbol and try again.")
-            return
+        else:
+            df = fetch_stock_data_unified(ticker, period=period)
+            if (df is None or df.empty) and YFINANCE_AVAILABLE:
+                st.warning("⚠️ Alpha Vantage failed, trying yfinance...")
+                df = fetch_stock_data_yfinance(ticker, period=period)
+        if df is None or df.empty:
+            st.error("❌ Unable to fetch data from any source. Falling back to sample data.")
+            df = create_sample_data(ticker, period)
         
         # Process the data
         data_source = df.attrs.get('source', 'unknown')
@@ -696,8 +679,6 @@ def main():
         
         # Get stock info
         stock_info = get_stock_info(ticker)
-        currency = stock_info.get('currency', 'USD')
-        currency_symbol = '$' if currency == 'USD' else 'INR ' if currency == 'INR' else currency
         
         with tab1:
             # Stock information
@@ -785,7 +766,7 @@ def main():
             st.markdown("### 🔮 Next Day Prediction")
             next_day_pred = predict_next_price(model, scaler, df)
             
-            if next_day_pred is not None:
+            if next_day_pred:
                 current_price = df['Close'].iloc[-1]
                 price_change = next_day_pred - current_price
                 percentage_change = (price_change / current_price) * 100
@@ -1010,88 +991,101 @@ def main():
                 st.write(f"- Total Data Points: {len(df):,}")
                 st.write(f"- Date Range: {df['Date'].min().strftime('%Y-%m-%d')} to {df['Date'].max().strftime('%Y-%m-%d')}")
         
+        # Warning disclaimer
+        st.markdown("""
+        <div class="warning-card">
+            <strong>⚠️ Important Disclaimer:</strong><br>
+            This application is designed for educational and research purposes only. 
+            Stock price predictions are inherently uncertain and should never be used as the sole basis for investment decisions. 
+            <br><br>
+            <strong>🔍 Please Note:</strong>
+            <ul>
+                <li>Past performance does not guarantee future results</li>
+                <li>Market conditions can change rapidly and unpredictably</li>
+                <li>Always consult with qualified financial advisors</li>
+                <li>Conduct your own thorough research before making investment decisions</li>
+                <li>Only invest what you can afford to lose</li>
+            </ul>
+            <br>
+            <strong>📊 Data Sources:</strong> This application utilizes multiple data sources including Alpha Vantage API 
+            and may fall back to sample data for demonstration when live APIs are unavailable.
+        </div>
+        """, unsafe_allow_html=True)
+    
     else:
-            # Welcome screen
-            # Title and tagline
-            st.title("🚀 Cortex-o1 Predictive Model")
-            st.caption("AI-powered stock predictions and analysis — built with Streamlit, scikit-learn, and Plotly")
+        # Welcome screen
+        st.markdown("""
+        ##              🚀 Welcome to Cortex-o1 Predictive Model!
+        
+        ### ✨ Premium Features:
+        - **🔄 Multi-API Integration**: Seamless data fetching from multiple sources
+        - **🤖 Advanced AI Models**: Machine learning-powered predictions
+        - **📊 Comprehensive Analysis**: Technical indicators and market insights
+        - **🎨 Premium Interface**: Beautiful, responsive dark theme
+        - **📈 Real-time Charts**: Interactive visualizations with Plotly
+        - **🔍 Performance Metrics**: Detailed model evaluation and statistics
+        
+        ### 🌍 Global Market Coverage:
+        
+        **🇺🇸 US Stocks:**
+        - Apple (AAPL), Google (GOOGL), Microsoft (MSFT)
+        - Tesla (TSLA), Amazon (AMZN), NVIDIA (NVDA)
+        - Meta (META), Netflix (NFLX), JPMorgan (JPM), Visa (V)
+        
+        **🇮🇳 Indian Stocks:**
+        - Reliance Industries, TCS, Infosys
+        - HDFC Bank, Wipro, ITC, SBI
+        
+        ### 🎯 How It Works:
+        
+        1. **📊 Select Your Stock**: Choose from popular stocks or enter any ticker
+        2. **⏱️ Choose Time Period**: Analyze from 1 month to 5 years of data
+        3. **🤖 AI Analysis**: Our advanced ML models analyze patterns
+        4. **🔮 Get Predictions**: Receive next-day price predictions with confidence levels
+        5. **📈 Visualize Results**: Explore interactive charts and detailed analytics
+        
+        ### 🛠️ Technical Features:
+        
+        **🧠 Machine Learning:**
+        - Random Forest Regression
+        - Feature Engineering with Technical Indicators
+        - Cross-validation and Performance Metrics
+        
+        **📊 Technical Analysis:**
+        - Moving Averages (20-day, 50-day)
+        - Relative Strength Index (RSI)
+        - Volume Analysis
+        - Price Change Patterns
+        
+        **📈 Visualizations:**
+        - Interactive Price Charts
+        - Volume Analysis
+        - RSI Momentum Indicators
+        - Feature Importance Analysis
+        
+        ### 🔧 Quick Start:
+        
+        1. **🔍 Test APIs**: Check the "API Status Check" section
+        2. **📊 Configure**: Select your preferred stock and time period
+        3. **🚀 Analyze**: Click "Predict Stock Price" to begin
+        4. **📈 Explore**: Navigate through different tabs for comprehensive analysis
+        
+        ### 💡 Pro Tips:
+        
+        - **Better Predictions**: Use longer time periods (1y+) for more reliable models
+        - **Market Context**: Consider external factors affecting stock prices
+        - **Multiple Timeframes**: Compare predictions across different periods
+        - **Risk Management**: Always diversify your investment portfolio
+        
+        ### 👈 Ready to Start?
+        Use the sidebar to configure your analysis settings and begin exploring the power of AI-driven stock prediction!
+        
+        ---
+        
+        <div style="text-align: center; color: #666; margin-top: 2rem;">
+            Built with ❤️ using Streamlit, scikit-learn, and Plotly
+        </div>
+        """)
 
-            st.divider()
-
-            # Two-column intro: Features & Market Coverage
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.subheader("✨ Premium Features")
-                st.markdown("""
-                - 🔄 **Multi-API Integration**: Seamless data fetching
-                - 🤖 **Advanced AI Models**: ML-powered predictions
-                - 📊 **Comprehensive Analysis**: Technical indicators & market context
-                - 🎨 **Premium Interface**: Dark, responsive design
-                - 📈 **Interactive Charts**: Plotly-based exploration
-                - 🔍 **Performance Metrics**: MAE, RMSE, MAPE, R²
-                """)
-
-            with col2:
-                st.subheader("🌍 Global Market Coverage")
-                st.markdown("""
-                **US 🇺🇸**
-                - Apple (AAPL), Alphabet (GOOGL), Microsoft (MSFT)
-                - Tesla (TSLA), Amazon (AMZN), NVIDIA (NVDA)
-                - Meta (META), Netflix (NFLX), JPMorgan (JPM), Visa (V)
-
-                **India 🇮🇳**
-                - Reliance (RELIANCE), TCS (TCS), Infosys (INFY)
-                - HDFC Bank (HDFCBANK), Wipro (WIPRO)
-                - ITC (ITC), SBI (SBIN)
-                """)
-
-            st.divider()
-
-            # Two-column: How it works & Technical Analysis
-            col3, col4 = st.columns(2)
-
-            with col3:
-                st.subheader("🎯 How It Works")
-                st.markdown("""
-                1. **Select a stock/ticker**
-                2. **Choose time period** (1M–5Y)
-                3. **AI analysis** with engineered features
-                4. **Forecast** next-period price with prediction interval
-                5. **Visualize** with interactive charts & metrics
-                """)
-
-                st.subheader("💡 Pro Tips")
-                st.markdown("""
-                - Longer histories (≥1Y) improve stability
-                - Compare multiple windows for robustness
-                - Use intervals, not point estimates
-                - Diversify — predictions are uncertain
-                """)
-
-            with col4:
-                st.subheader("🧠 Machine Learning")
-                st.markdown("""
-                - Random Forest Regression (time-series aware)
-                - Feature engineering: MAs, RSI, volume, returns
-                - Walk-forward / TimeSeriesSplit validation
-                """)
-
-                st.subheader("📊 Technical Analysis")
-                st.markdown("""
-                - Moving Averages (20-day, 50-day)
-                - RSI momentum
-                - Volume trends
-                - Price-change patterns
-                """)
-
-            st.divider()
-
-                
-                # Footer / Disclaimer
-            st.caption("**Disclaimer:** This app provides educational analytics and probabilistic forecasts only. It is not financial advice. Markets are volatile; past performance does not guarantee future results.")
-                
 if __name__ == "__main__":
     main()
-
-
