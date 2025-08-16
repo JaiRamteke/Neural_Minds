@@ -555,8 +555,39 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
 
 def main():
     # Title and description
-    st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Advanced Market Analysis & AI-Powered Prediction Platform</p>', unsafe_allow_html=True)
+    st.markdown(
+    """
+    <h1 style='text-align: center; margin-bottom: 10px;'>
+        <a href="/" style='
+            text-decoration: none;
+            font-size: 48px;
+            font-weight: 800;
+            background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 0px 10px rgba(79,172,254,0.7);
+        '>
+            Neural Minds
+        </a>
+    </h1>
+    """,
+    unsafe_allow_html=True
+    )
+    st.markdown(
+    """
+    <p style='
+        text-align: center;
+        font-size: 20px;
+        font-weight: 500;
+        color: #ff00ff;
+        text-shadow: 0 0 6px #ff00ff, 0 0 12px #ff00ff, 0 0 18px #ff00ff;
+        margin-top: -10px;
+    '>
+        Advanced Market Analysis & AI-Powered Prediction Platform
+    </p>
+    """,
+    unsafe_allow_html=True
+    )
 
     # Initialize variables (🔑 init once here)
     df, current_price = None, None
@@ -1214,11 +1245,20 @@ def main():
     
     else:
         # Welcome screen
-        st.markdown("""
-            <h2 style='text-align: center;'> Cortex-o1 Predictive Model</h2>
+        st.markdown(
+            """
+            <h2 style='
+                text-align: center;
+                font-size: 40px;
+                font-weight: 800;
+                color: #00e6e6;
+                text-shadow: 0 0 10px #00e6e6, 0 0 20px #00e6e6, 0 0 30px #00e6e6;
+            '>
+               🧠 Cortex-o1 Predictive Model
+            </h2>
             """,
             unsafe_allow_html=True
-    )
+        )
 
         col1, col2 = st.columns(2)
 
@@ -1269,6 +1309,8 @@ def main():
                 - ⏳ Compare predictions across different timeframes  
                 - 🛡️ Always diversify your portfolio  
                 """)
+                        
+        # 👇 Bottom full-width message
         st.markdown(
             """
             ---
