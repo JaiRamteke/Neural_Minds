@@ -137,18 +137,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Force sidebar always visible (disable collapse button)
-st.markdown("""
-    <style>
-        section[data-testid="stSidebar"] > div {
-            height: 100%;
-        }
-        button[title="Collapse sidebar"] {
-            display: none;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 # Enhanced stock tickers
 RELIABLE_TICKERS = {
     "US Markets": {
@@ -1071,5 +1059,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
