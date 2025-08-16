@@ -990,12 +990,18 @@ def main():
             
             with col1:
                 st.markdown("**💰 Price Statistics:**")
+                high_val = df['High'].max()
                 try:
                     high_val = float(high_val)
                     st.write(f"- Highest Price: {currency_symbol}{high_val:.2f}")
                 except (ValueError, TypeError):
                     st.write("- Highest Price: Data not available")
-                st.write(f"- Lowest Price: {currency_symbol}{df['Low'].min():.2f}")
+                low_val = df['Low'].min()
+                try:
+                    low_val = float(low_val)
+                    st.write(f"- Lowest Price: {currency_symbol}{low_val:.2f}")
+                except (ValueError, TypeError):
+                    st.write("- Lowest Price: Data not available")
                 st.write(f"- Average Price: {currency_symbol}{df['Close'].mean():.2f}")
                 st.write(f"- Price Range: {currency_symbol}{(df['High'].max() - df['Low'].min()):.2f}")
             
@@ -1104,4 +1110,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
