@@ -1261,14 +1261,14 @@ def main():
                 - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
 
                 ### 🌍 Global Market Coverage:
-                **🇺🇸 US Stocks:**
+                ** US Stocks 🇺🇸:**
                 - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
                 - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
                 - Meta (META), Netflix (NFLX)
                 - JPMorgan (JPM), Visa (V)
                 - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
 
-                **🇮🇳 Indian Stocks:**
+                ** Indian Stocks 🇮🇳:**
                 - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
                 - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
                 - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
@@ -1309,6 +1309,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
