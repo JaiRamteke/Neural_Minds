@@ -659,16 +659,20 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                current_price = df['Close'].iloc[-1]
-                currency = stock_info.get('currency', 'USD')
-                currency_symbol = '$' if currency == 'USD' else 'INR ' if currency == 'INR' else currency
+                current_price_val = None
                 if current_price is None and df is not None and not df.empty:
-                    # Fallback: last closing price from dataframe
-                    current_price = df['Close'].iloc[-1]
-
-                if current_price is not None:
-                    st.metric("Current Price", f"{currency_symbol}{float(current_price):.2f}")
+                    # fallback: last close from df
+                    current_price_val = df['Close'].iloc[-1]
                 else:
+                    current_price_val = current_price
+
+                try:
+                    if current_price_val is not None and not pd.isna(current_price_val):
+                        current_price_val = float(current_price_val)
+                        st.metric("Current Price", f"{currency_symbol}{current_price_val:.2f}")
+                    else:
+                        st.metric("Current Price", "Data not available")
+                except (ValueError, TypeError):
                     st.metric("Current Price", "Data not available")
             
             with col2:
@@ -1122,6 +1126,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
