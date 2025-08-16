@@ -514,19 +514,19 @@ def main():
     # Sidebar for inputs
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
+
+        st.markdown('<div class="api-status api-working">💎 Premium API Access Enabled</div>', unsafe_allow_html=True)
         
         # Platform Status
         st.markdown("#### 🚀 Platform Status")
         # Data source selection
         st.markdown("#### 📡 Data Source")
-        data_source_choice = st.selectbox(
+        source = st.selectbox(
             "Select Data Source",
             ["Alpha Vantage", "yfinance"],
             index=0,
             help="Choose where to fetch stock data from"
         )
-
-        st.markdown('<div class="api-status api-working">💎 Premium API Access Enabled</div>', unsafe_allow_html=True)
         
         # Stock selection
         st.markdown("#### 📈 Stock Selection")
@@ -570,13 +570,41 @@ def main():
             index=3,
             help="Choose the historical data period for analysis"
         )
-        
+        # Alpha Vantage options
+        av_mode, av_interval = "Daily", "5min"
+        if source == "alpha_vantage":
+            av_mode = st.sidebar.selectbox("Alpha Vantage Mode", ["Daily", "Intraday"])
+        if av_mode == "Intraday":
+            av_interval = st.sidebar.selectbox(
+                "Select Intraday Interval",
+                ["1min", "5min", "15min", "30min", "60min"],
+                index=1  # default = 5min
+        )
+
         # Prediction settings
         st.markdown("#### 🔮 Prediction Settings")
         prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
         
         # Action button
         predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
+
+        # === Run Analysis when button is pressed ===
+        if predict_button:
+            with st.spinner("Fetching stock data..."):
+                df = fetch_stock_data_unified(
+                    ticker,
+                    period,
+                    source=source,
+                    market=market,
+                    av_mode=av_mode,
+                    av_interval=av_interval,
+                )
+
+        if df is None or df.empty:
+            st.error("❌ No data fetched. Please check ticker, API limits, or try another source.")
+        else:
+            st.success("✅ Data successfully fetched!")
+            st.dataframe(df.head())
 
     # Main content area
     if predict_button:
@@ -1015,6 +1043,7 @@ def main():
                     st.write(f"- Average Price: {currency_symbol}{avg_price_val:.2f}")
                 else:
                     st.write("- Average Price: Data not available")
+                price_range_val = None
                 if df is not None and 'High' in df.columns and 'Low' in df.columns:
                     try:
                         high_val = df['High'].max()
@@ -1170,8 +1199,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
