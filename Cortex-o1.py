@@ -684,7 +684,18 @@ def main():
                 st.metric("Price Change", f"{currency_symbol}{price_change:.2f}", f"{pct_change:.2f}%")
             
             with col3:
-                st.metric("Volume", f"{df['Volume'].iloc[-1]:,.0f}")
+                volume = None
+                if df is not None and 'Volume' in df.columns and len(df) > 0:
+                    volume = df['Volume'].iloc[-1]
+                    try:
+                        volume = int(float(volume))
+                    except (ValueError, TypeError):
+                        volume = None
+
+                if volume is not None:
+                    st.metric("Volume", f"{volume:,.0f}")
+                else:
+                    st.metric("Volume", "Data not available")
             
             with col4:
                 volatility = df['Close'].pct_change().std() * 100
@@ -1071,4 +1082,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
