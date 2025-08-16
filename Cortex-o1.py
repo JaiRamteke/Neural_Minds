@@ -113,10 +113,7 @@ st.markdown("""
         footer {visibility: visible;}
         header {visibility: visible;}
             
-        section[data-testid="stSidebar"] {
-            background: #f9f9f9;  /* adjust for your theme */
-            color: #000;
-        }
+        /* Sidebar text fix */
         section[data-testid="stSidebar"] {
             background: #f9f9f9;
             color: #000000;
