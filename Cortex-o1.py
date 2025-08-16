@@ -755,8 +755,17 @@ def main():
                     st.metric("52W Low", "Data not available")
             
             with col3:
-                avg_volume = df['Volume'].mean()
-                st.metric("Avg Volume", f"{avg_volume:,.0f}")
+                avg_volume_val = None
+                if df is not None and 'Volume' in df.columns and not df.empty:
+                    try:
+                        avg_volume_val = float(df['Volume'].mean())
+                    except (ValueError, TypeError):
+                        avg_volume_val = None
+
+                if avg_volume_val is not None and not pd.isna(avg_volume_val):
+                    st.metric("Avg Volume", f"{avg_volume_val:,.0f}")
+                else:
+                    st.metric("Avg Volume", "Data not available")
             
             with col4:
                 if 'RSI' in df.columns and not df['RSI'].isna().all():
@@ -1113,6 +1122,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
