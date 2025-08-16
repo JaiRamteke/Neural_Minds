@@ -476,14 +476,6 @@ def train_model(df):
             'feature': feature_names,
             'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
-        
-        # Plot feature importance
-        st.subheader("Feature Importance")
-        plt.figure(figsize=(10, 6))
-        sns.barplot(x='importance', y='feature', data=feature_importance, palette='viridis')
-        plt.title("Feature Importance")
-        st.pyplot(plt)
-
         return model, scaler, metrics, feature_importance
         
     except Exception as e:
@@ -1322,4 +1314,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
