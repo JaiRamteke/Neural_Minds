@@ -1215,7 +1215,7 @@ def main():
     else:
         # Welcome screen
         st.markdown("""
-            <h2 style='text-align: center;'> Cortex-o1 Predictive Model!</h2>
+            <h2 style='text-align: center;'> Cortex-o1 Predictive Model</h2>
             """,
             unsafe_allow_html=True
     )
@@ -1268,11 +1268,14 @@ def main():
                 - 🌍 Consider external market/economic context  
                 - ⏳ Compare predictions across different timeframes  
                 - 🛡️ Always diversify your portfolio  
-
----
-👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
                 """)
-
+        st.markdown(
+            """
+            ---
+            👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+            """,
+            unsafe_allow_html=True
+)
 
 if __name__ == "__main__":
     main()
