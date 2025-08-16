@@ -555,24 +555,7 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
 
 def main():
     # Title and description
-    st.markdown(
-    """
-    <h1 style='text-align: center; margin-bottom: 10px;'>
-        <a href="/" style='
-            text-decoration: none;
-            font-size: 48px;
-            font-weight: 800;
-            background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0px 0px 10px rgba(79,172,254,0.7);
-        '>
-            Neural Minds
-        </a>
-    </h1>
-    """,
-    unsafe_allow_html=True
-    )
+    st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
     st.markdown(
     """
     <p style='
