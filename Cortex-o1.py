@@ -34,7 +34,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean Maroon Theme CSS
+# Clean White Theme CSS
 st.markdown("""
     <style>
         /* Import Google Fonts */
@@ -44,7 +44,7 @@ st.markdown("""
         .main-header {
             font-size: 3.5rem;
             font-weight: 700;
-            background: linear-gradient(45deg, #6a1b9a, #b71c1c);
+            background: linear-gradient(45deg, #1f77b4, #ff7f0e);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -56,20 +56,19 @@ st.markdown("""
         .subtitle {
             text-align: center;
             font-size: 1.3rem;
-            color: #ad1457;
+            color: #666;
             margin-bottom: 3rem;
             font-weight: 300;
         }
         
         /* Warning Card */
         .warning-card {
-            background: #4a0e0e;
+            background: #000000;
             padding: 1.5rem;
             border-radius: 8px;
-            border: 1px solid #ef9a9a;
+            border: 1px solid #ffeaa7;
             margin-top: 2rem;
-            border-left: 4px solid #d32f2f;
-            color: white;
+            border-left: 4px solid #fdcb6e;
         }
         
         /* Status Indicators */
@@ -80,20 +79,20 @@ st.markdown("""
         }
         
         .api-working {
-            background: #fce4ec;
-            color: #880e4f;
-            border: 1px solid #f8bbd0;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
         
         .api-failed {
-            background: #ffebee;
-            color: #b71c1c;
-            border: 1px solid #ef9a9a;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
         
         /* Buttons */
         .stButton > button {
-            background: linear-gradient(45deg, #880e4f, #b71c1c);
+            background: linear-gradient(45deg, #1f77b4, #ff7f0e);
             color: white;
             border: none;
             padding: 0.75rem 1.5rem;
@@ -105,30 +104,10 @@ st.markdown("""
         }
         
         .stButton > button:hover {
-            background: linear-gradient(45deg, #6a1b9a, #c62828);
+            background: linear-gradient(45deg, #1565c0, #f57c00);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
-        
-        /* App background */
-        .stApp {
-            background-color: #fdf6f6;  /* very light maroon background */
-        }
-
-        /* Sidebar background */
-        section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #4a0e0e, #880e4f);
-            color: white;
-        }
-
-        /* Sidebar labels */
-        section[data-testid="stSidebar"] .stSelectbox label,
-        section[data-testid="stSidebar"] .stRadio label,
-        section[data-testid="stSidebar"] .stSlider label {
-            color: white !important;
-            font-weight: 500;
-        }
-
         
         /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
@@ -1059,6 +1038,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
