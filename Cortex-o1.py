@@ -729,7 +729,17 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.metric("52W High", f"{currency_symbol}{df['High'].max():.2f}")
+                high_52w = None
+                if df is not None and 'High' in df.columns and not df.empty:
+                    try:
+                        high_52w = float(df['High'].max())
+                    except (ValueError, TypeError):
+                        high_52w = None
+
+                if high_52w is not None and not pd.isna(high_52w):
+                    st.metric("52W High", f"{currency_symbol}{high_52w:.2f}")
+                else:
+                    st.metric("52W High", "Data not available")
             
             with col2:
                 st.metric("52W Low", f"{currency_symbol}{df['Low'].min():.2f}")
@@ -1093,4 +1103,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
