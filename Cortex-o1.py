@@ -658,13 +658,6 @@ def main():
                 current_price = df['Close'].iloc[-1]
                 currency = stock_info.get('currency', 'USD')
                 currency_symbol = '$' if currency == 'USD' else 'INR ' if currency == 'INR' else currency
-                if current_price is not None:
-                    try:
-                        st.metric("Current Price", f"{currency_symbol}{float(current_price):.2f}")
-                    except Exception:
-                        st.metric("Current Price", f"{currency_symbol}{current_price}")
-                    else:
-                        st.metric("Current Price", "Data not available")
             
             with col2:
                 price_change = df['Close'].iloc[-1] - df['Close'].iloc[-2] if len(df) > 1 else 0
@@ -1059,3 +1052,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
