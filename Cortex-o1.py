@@ -579,9 +579,11 @@ def main():
         text-align: center;
         font-size: 20px;
         font-weight: 500;
-        color: #ff00ff;
-        text-shadow: 0 0 6px #ff00ff, 0 0 12px #ff00ff, 0 0 18px #ff00ff;
+        background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         margin-top: -10px;
+        margin-bottom: 20px;
     '>
         Advanced Market Analysis & AI-Powered Prediction Platform
     </p>
@@ -646,8 +648,7 @@ def main():
             <div class="api-badge">💎 Premium API Access Enabled</div>
             """,
             unsafe_allow_html=True
-)
-        
+        )
         # Data source selection
         st.markdown("#### 📡 Data Source")
         data_source_choice = st.selectbox(
@@ -1251,10 +1252,13 @@ def main():
                 text-align: center;
                 font-size: 40px;
                 font-weight: 800;
-                color: #00e6e6;
-                text-shadow: 0 0 10px #00e6e6, 0 0 20px #00e6e6, 0 0 30px #00e6e6;
+                background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                text-decoration: none;
+                margin-bottom: 20px;
             '>
-               🧠 Cortex-o1 Predictive Model
+                🧠 Cortex-o1 Predictive Model
             </h2>
             """,
             unsafe_allow_html=True
