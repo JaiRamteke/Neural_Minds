@@ -521,7 +521,7 @@ def main():
         st.markdown("#### 🚀 Platform Status")
         # Data source selection
         st.markdown("#### 📡 Data Source")
-        source = st.selectbox(
+        data_source_choice = st.selectbox(
             "Select Data Source",
             ["Alpha Vantage", "yfinance"],
             index=0,
@@ -1171,3 +1171,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
