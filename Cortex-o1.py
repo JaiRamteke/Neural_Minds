@@ -698,8 +698,14 @@ def main():
                     st.metric("Volume", "Data not available")
             
             with col4:
-                volatility = df['Close'].pct_change().std() * 100
-                st.metric("Volatility", f"{volatility:.2f}%")
+                if volatility is not None and not pd.isna(volatility):
+                    try:
+                        volatility = float(volatility)
+                        st.metric("Volatility", f"{volatility:.2f}%")
+                    except (ValueError, TypeError):
+                        st.metric("Volatility", "Data not available")
+                else:
+                    st.metric("Volatility", "Data not available")
             
             # Stock details
             st.markdown("### 📊 Stock Details")
@@ -1082,5 +1088,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
