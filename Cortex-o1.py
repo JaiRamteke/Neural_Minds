@@ -687,7 +687,7 @@ def main():
 
         # Prediction settings
         st.markdown("#### 🔮 Prediction Settings")
-        prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
+        prediction_days = st.slider("Days to Predict", 1, help="Number of days to predict into the future")
         
         # Action button
         predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
@@ -1309,6 +1309,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
