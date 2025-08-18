@@ -911,9 +911,12 @@ def main():
 
         # Debug info if still None
         if volatility is None:
-            st.warning(f"⚠️ Volatility not computed. Rows: {len(df)}, "
-                    f"valid closes: {df['Close'].notna().sum()}, "
-                    f"unique closes: {df['Close'].nunique()}")
+            st.warning(
+                f"⚠️ Volatility could not be computed. "
+                f"Rows: {len(df) if df is not None else 0}, "
+                f"Close exists: {'Close' in df.columns if df is not None else False}, "
+                f"Valid closes: {df['Close'].notna().sum() if df is not None and 'Close' in df.columns else 0}"
+            )
 
         # ---------------------------
         # UI Tabs - Tab1 (Stock Analysis)
