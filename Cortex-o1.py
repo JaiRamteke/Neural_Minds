@@ -780,9 +780,9 @@ def main():
         st.sidebar.markdown("### 🤖 Select Models for Forecasting")
 
         model_choices = st.sidebar.multiselect(
-            "Choose one or more models:",
-            ["ARIMA", "Prophet", "LSTM", "Random Forest", "XGBoost"],
-            default=["ARIMA"]  # or [] if you want none pre-selected
+            "Choose the models:",
+            ["Prophet", "LSTM", "Random Forest",],
+            default=["Random Forest"]  # or [] if you want none pre-selected
         )
 
         # Time period selection
