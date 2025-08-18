@@ -677,7 +677,7 @@ def main():
         st.markdown("#### 📡 Data Source")
         data_source_choice = st.selectbox(
             "Select Data Source",
-            ["yfinance (default)", "Alpha Vantage", "Auto (yfinance → Alpha Vantage → Sample)"],
+            ["yfinance", "Alpha Vantage", "Auto (yfinance → Alpha Vantage → Sample)"],
             index=0,
             help="Choose the data source. 'Auto' tries yfinance first, then Alpha Vantage, then sample data."
         )
@@ -1364,3 +1364,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
