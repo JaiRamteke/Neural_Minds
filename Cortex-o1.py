@@ -227,46 +227,85 @@ def test_api_connections():
 @st.cache_data(ttl=300)
 def fetch_stock_data_yfinance(ticker, period="1y"):
     try:
-        ticker = map_ticker_for_source(ticker, "yfinance")
-        yf_period_map = {'1mo': '1mo','3mo': '3mo','6mo': '6mo','1y': '1y','2y': '2y','5y': '5y'}
+        ticker_mapped = map_ticker_for_source(ticker, "yfinance")
+        yf_period_map = {'1mo': '1mo', '3mo': '3mo', '6mo': '6mo', '1y': '1y', '2y': '2y', '5y': '5y'}
         yf_period = yf_period_map.get(period, '1y')
-        df = yf.download(ticker, period=yf_period, interval="1d", auto_adjust=False)
-        if df.empty: raise Exception("No data returned from yfinance")
+        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
+        if df.empty:
+            return None
         df.reset_index(inplace=True)
-        df = df[['Date','Open','High','Low','Close','Volume']]
-        df.attrs = {'source':'yfinance','ticker':ticker}
+        df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
         df['Date'] = pd.to_datetime(df['Date'])
+        df.attrs = {'source': 'yfinance', 'ticker': ticker_mapped}
         return df
-    except Exception as e:
-        st.warning(f"yfinance error: {str(e)}. Using sample data.")
-        return create_sample_data(ticker, period)
+    except Exception:
+        return None
+
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_unified(ticker, period="1y"):
     try:
         mapped_ticker = map_ticker_for_source(ticker, "alpha_vantage")
         time.sleep(1)
-        params = {'function':'TIME_SERIES_DAILY','symbol':mapped_ticker,'apikey':ALPHA_VANTAGE_API_KEY,
-                  'outputsize':'full','datatype':'json'}
+        params = {
+            'function': 'TIME_SERIES_DAILY',
+            'symbol': mapped_ticker,
+            'apikey': ALPHA_VANTAGE_API_KEY,
+            'outputsize': 'full',
+            'datatype': 'json'
+        }
         response = requests.get(AV_BASE_URL, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
-        if 'Error Message' in data: raise Exception(data['Error Message'])
-        if 'Time Series (Daily)' not in data: raise Exception("No data found in response")
+        if 'Error Message' in data or 'Time Series (Daily)' not in data:
+            return None
+
         df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index')
-        df.columns = ['Open','High','Low','Close','Volume']
+        df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
         df = df.astype(float)
         df.index = pd.to_datetime(df.index)
-        df = df.sort_index().reset_index().rename(columns={'index':'Date'})
+        df = df.sort_index().reset_index().rename(columns={'index': 'Date'})
         days = get_period_days(period)
-        start_date = datetime.now()-timedelta(days=days)
-        df = df[df['Date']>=start_date]
-        df.attrs['source']='alpha_vantage'
+        start_date = datetime.now() - timedelta(days=days)
+        df = df[df['Date'] >= start_date]
         df['Date'] = pd.to_datetime(df['Date'])
+        df.attrs = {'source': 'alpha_vantage'}
         return df
-    except Exception as e:
-        st.warning(f"Alpha Vantage API error: {str(e)}. Using sample data.")
-        return create_sample_data(ticker, period)
+    except Exception:
+        return None
+
+def load_stock_data_auto(ticker, period="1y"):
+    """
+    Try yfinance -> Alpha Vantage -> sample, and return (df, used_source, trace_list)
+    where trace_list is a list of (source_key, human_message).
+    """
+    trace = []
+
+    # 1) yfinance (preferred)
+    if YFINANCE_AVAILABLE:
+        df_yf = fetch_stock_data_yfinance(ticker, period)
+        if df_yf is not None:
+            trace.append(("yfinance", "✅ yfinance loaded successfully"))
+            return df_yf, "yfinance", trace
+        else:
+            trace.append(("yfinance", "❌ yfinance failed (no/invalid data)"))
+    else:
+        trace.append(("yfinance", "❌ yfinance not installed"))
+
+    # 2) Alpha Vantage (backup)
+    df_av = fetch_stock_data_unified(ticker, period)
+    if df_av is not None:
+        trace.append(("alpha_vantage", "✅ Alpha Vantage loaded successfully"))
+        return df_av, "alpha_vantage", trace
+    else:
+        trace.append(("alpha_vantage", "❌ Alpha Vantage failed (no/invalid data)"))
+
+    # 3) Sample (last resort)
+    df_sample = create_sample_data(ticker, period)
+    df_sample.attrs['source'] = 'sample_data'
+    trace.append(("sample_data", "⚠️ Using sample data (both APIs unavailable)"))
+    return df_sample, "sample_data", trace
+
 
 def get_period_days(period):
     return {'1mo':30,'3mo':90,'6mo':180,'1y':365,'2y':730,'5y':1825}.get(period,365)
@@ -471,6 +510,7 @@ def train_model(df):
             'feature': feature_names,
             'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
+
         return model, scaler, metrics, feature_importance
         
     except Exception as e:
@@ -633,14 +673,15 @@ def main():
             """,
             unsafe_allow_html=True
         )
-        # Data source selection
+                # Data source selection (default yfinance)
         st.markdown("#### 📡 Data Source")
         data_source_choice = st.selectbox(
             "Select Data Source",
-            ["Alpha Vantage", "yfinance"],
+            ["yfinance (default)", "Alpha Vantage", "Auto (yfinance → Alpha Vantage → Sample)"],
             index=0,
-            help="Choose where to fetch stock data from"
+            help="Choose the data source. 'Auto' tries yfinance first, then Alpha Vantage, then sample data."
         )
+
         
         # Stock selection
         st.markdown("#### 📈 Stock Selection")
@@ -687,7 +728,7 @@ def main():
 
         # Prediction settings
         st.markdown("#### 🔮 Prediction Settings")
-        prediction_days = st.slider("Days to Predict", 1, help="Number of days to predict into the future")
+        prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
         
         # Action button
         predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
@@ -707,32 +748,46 @@ def main():
             "📋 Data Table"
         ])
         
-        # Fetch stock data
+        # Fetch stock data depending on user choice
         with st.spinner(f"🔄 Fetching stock data from {data_source_choice}..."):
-            if data_source_choice == "yfinance":
-                if YFINANCE_AVAILABLE:
-                    df = fetch_stock_data_yfinance(ticker, period=period)
-                if df is None or df.empty:
+            if data_source_choice.startswith("yfinance"):
+                df = fetch_stock_data_yfinance(ticker, period) if YFINANCE_AVAILABLE else None
+                used_source = "yfinance" if df is not None else None
+                if df is None:
                     st.warning("⚠️ yfinance failed, trying Alpha Vantage...")
-                    df = fetch_stock_data_unified(ticker, period=period)
-            else:
-                df = fetch_stock_data_unified(ticker, period=period)
-                if (df is None or df.empty) and YFINANCE_AVAILABLE:
-                    st.warning("⚠️ Alpha Vantage failed, trying yfinance...")
-                    df = fetch_stock_data_yfinance(ticker, period=period)
+                    df = fetch_stock_data_unified(ticker, period)
+                    used_source = "alpha_vantage" if df is not None else None
 
-            if df is None or df.empty:
-                st.error("❌ Unable to fetch data from any source. Falling back to sample data.")
-                df = create_sample_data(ticker, period)
-        
+            elif data_source_choice.startswith("Alpha Vantage"):
+                df = fetch_stock_data_unified(ticker, period)
+                used_source = "alpha_vantage" if df is not None else None
+                if df is None and YFINANCE_AVAILABLE:
+                    st.warning("⚠️ Alpha Vantage failed, trying yfinance...")
+                    df = fetch_stock_data_yfinance(ticker, period)
+                    used_source = "yfinance" if df is not None else None
+
+            else:  # Auto mode
+                df, used_source, trace = load_stock_data_auto(ticker, period)
+                # Inline API call status
+                st.markdown("#### 🔎 API Call Status")
+                for src, msg in trace:
+                    css_class = "api-working" if "✅" in msg else "api-failed"
+                    st.markdown(f'<div class="api-status {css_class}">{msg}</div>', unsafe_allow_html=True)
+
+        # If still nothing, drop to sample
+        if df is None or df.empty:
+            st.error("❌ Unable to fetch real data. Using sample data.")
+            df = create_sample_data(ticker, period)
+            used_source = "sample_data"
+
         # Process the data
-        data_source = df.attrs.get('source', 'unknown')
+        data_source = df.attrs.get('source', used_source)
         df = process_stock_data(df, ticker, data_source)
-        
+
         if df is None or df.empty:
             st.error("❌ Unable to process stock data. Please try again.")
             return
-        
+
         # Display data source info
         if data_source == 'sample_data':
             st.warning("⚠️ Using sample data for demonstration. Real-time data unavailable.")
@@ -1261,14 +1316,14 @@ def main():
                 - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
 
                 ### 🌍 Global Market Coverage:
-                ** US Stocks 🇺🇸:**
+                **🇺🇸 US Stocks:**
                 - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
                 - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
                 - Meta (META), Netflix (NFLX)
                 - JPMorgan (JPM), Visa (V)
                 - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
 
-                ** Indian Stocks 🇮🇳:**
+                **🇮🇳 Indian Stocks:**
                 - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
                 - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
                 - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
@@ -1309,10 +1364,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
