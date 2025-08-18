@@ -1040,45 +1040,45 @@ def main():
                     st.error(f"LSTM failed: {e}")
 
             # ---------------------------
-# Show Leaderboard & Forecasts
-# ---------------------------
-st.markdown("### 🏆 Model Leaderboard & Forecasts")
+            # Show Leaderboard & Forecasts
+            # ---------------------------
+            st.markdown("### 🏆 Model Leaderboard & Forecasts")
 
-if model_choices:
-    forecasts = {}
+            if model_choices:
+                forecasts = {}
 
-    if "Prophet" in model_choices and PROPHET_AVAILABLE:
-        # (Prophet code same as before)
-        pass
+                if "Prophet" in model_choices and PROPHET_AVAILABLE:
+                    # (Prophet code same as before)
+                    pass
 
-    if "LSTM" in model_choices and KERAS_AVAILABLE:
-        # (LSTM code same as before)
-        pass
+                if "LSTM" in model_choices and KERAS_AVAILABLE:
+                    # (LSTM code same as before)
+                    pass
 
-    # ... repeat for ARIMA, RF, XGB
+                # ... repeat for ARIMA, RF, XGB
 
-    if forecasts:
-        # Leaderboard by R² (or other metric)
-        leaderboard = pd.DataFrame([
-            {"Model": m, "Last Forecast": vals[-1]} 
-            for m, vals in forecasts.items()
-        ])
-        st.dataframe(leaderboard)
+                if forecasts:
+                    # Leaderboard by R² (or other metric)
+                    leaderboard = pd.DataFrame([
+                        {"Model": m, "Last Forecast": vals[-1]} 
+                        for m, vals in forecasts.items()
+                    ])
+                    st.dataframe(leaderboard)
 
-        # Forecast plot
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=df_ind["Date"], y=df_ind["Close"],
-            mode="lines", name="Historical"
-        ))
-        for m, vals in forecasts.items():
-            future_dates = pd.date_range(df_ind["Date"].iloc[-1], periods=n_days+1, freq="D")[1:]
-            fig.add_trace(go.Scatter(
-                x=future_dates, y=vals,
-                mode="lines+markers", name=f"{m} Forecast"
-            ))
-        fig.update_layout(title="Forecasts Comparison", template="plotly_white")
-        st.plotly_chart(fig, use_container_width=True)
+                    # Forecast plot
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_ind["Date"], y=df_ind["Close"],
+                        mode="lines", name="Historical"
+                    ))
+                    for m, vals in forecasts.items():
+                        future_dates = pd.date_range(df_ind["Date"].iloc[-1], periods=n_days+1, freq="D")[1:]
+                        fig.add_trace(go.Scatter(
+                            x=future_dates, y=vals,
+                            mode="lines+markers", name=f"{m} Forecast"
+                        ))
+                    fig.update_layout(title="Forecasts Comparison", template="plotly_white")
+                    st.plotly_chart(fig, use_container_width=True)
 
 
     # -------------------- TAB 5: Data & Download --------------------
