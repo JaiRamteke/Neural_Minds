@@ -76,21 +76,31 @@ RELIABLE_TICKERS = {
         "AAPL": "Apple Inc.",
         "GOOGL": "Alphabet Inc.",
         "MSFT": "Microsoft Corporation",
+        "BLK": "BlackRock Inc.",
+        "GS": "Goldman Sachs Group Inc.",
+        "STT": "State Street Corporation",
         "TSLA": "Tesla Inc.",
         "AMZN": "Amazon.com Inc.",
         "NVDA": "NVIDIA Corporation",
         "META": "Meta Platforms Inc.",
+        "NFLX": "Netflix Inc.",
         "JPM": "JPMorgan Chase & Co.",
         "V": "Visa Inc."
     },
     "Indian Markets": {
         "RELIANCE.NSE": "Reliance Industries",
         "TCS.NSE": "Tata Consultancy Services",
+        "PARAS.NSE": "Paras Defence and Space Technologies",
         "INFY.NSE": "Infosys Limited",
         "HDFCBANK.NSE": "HDFC Bank",
+        "WIPRO.NSE": "Wipro Limited",
+        "ITC.NSE": "ITC Limited",
         "SBIN.NSE": "State Bank of India",
         "TATAMOTORS.NSE": "Tata Motors",
-        "TATASTEEL.NSE": "Tata Steel"
+        "TATASTEEL.NSE": "Tata Steel",
+        "KOTAKBANK.NSE": "Kotak Mahindra Bank",
+        "BHARTIARTL.NSE": "Bharti Airtel",
+        "HINDUNILVR.NSE": "Hindustan Unilever"
     }
 }
 
@@ -195,9 +205,36 @@ def create_sample_data(ticker: str, period: str = "1y"):
     base_name = ticker.split('.')[0].upper()
     # use a small dictionary of base prices
     base_prices = {
-        'AAPL': 175, 'GOOGL': 140, 'MSFT': 330, 'TSLA': 250, 'AMZN': 140,
-        'NVDA': 450, 'META': 300, 'RELIANCE': 2500, 'TCS': 3500, 'INFY': 1500
-    }
+    # US Markets
+    'AAPL': 180,
+    'GOOGL': 140,
+    'MSFT': 330,
+    'BLK': 700,        # BlackRock
+    'GS': 340,         # Goldman Sachs
+    'STT': 70,         # State Street
+    'TSLA': 250,
+    'AMZN': 140,
+    'NVDA': 450,
+    'META': 300,
+    'NFLX': 400,
+    'JPM': 150,        # JPMorgan
+    'V': 230,          # Visa
+    
+    # Indian Markets
+    'RELIANCE': 2500,
+    'TCS': 3500,
+    'PARAS': 700,      # Paras Defence
+    'INFY': 1500,
+    'HDFCBANK': 1600,
+    'WIPRO': 400,
+    'ITC': 450,
+    'SBIN': 600,
+    'TATAMOTORS': 650,
+    'TATASTEEL': 120,
+    'KOTAKBANK': 1900,
+    'BHARTIARTL': 850,
+    'HINDUNILVR': 2500
+}
     base_price = base_prices.get(base_name, 300.0)
     np.random.seed(abs(hash(ticker)) % (2**32))
     dates = pd.date_range(end=datetime.now(), periods=days, freq='B')
@@ -423,10 +460,82 @@ def main():
 
     # Welcome screen logic if not clicked
     if not predict_button:
-        st.markdown("""
-            <h2 style="text-align:center; font-weight:700;">🧠 Cortex-o1 Predictive Model</h2>
-            <p style="text-align:center;">Use the sidebar to pick a stock, choose data source, and run analysis & predictions.</p>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            """
+            <h2 style='
+                text-align: center;
+                font-size: 40px;
+                font-weight: 800;
+                background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                text-decoration: none;
+                margin-bottom: 20px;
+            '>
+                🧠 Cortex-o1 Predictive Model
+            </h2>
+            """,
+            unsafe_allow_html=True
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+                ### ✨ Premium Features:
+                - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
+                - 🤖 **Advanced AI Models**: Machine learning-powered predictions
+                - 📊 **Comprehensive Analysis**: Technical indicators & market insights
+                - 🎨 **Premium Interface**: Beautiful, responsive dark theme
+                - 📈 **Real-time Charts**: Interactive Plotly visualizations
+                - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
+
+                ### 🌍 Global Market Coverage:
+                **🇺🇸 US Stocks:**
+                - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
+                - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
+                - Meta (META), Netflix (NFLX)
+                - JPMorgan (JPM), Visa (V)
+                - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
+
+                **🇮🇳 Indian Stocks:**
+                - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
+                - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
+                - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
+                - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
+                - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
+                """)
+
+        with col2:
+            st.markdown("""
+                ### 🎯 How It Works:
+                1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
+                2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
+                3. 🤖 **AI Analysis**: ML models learn market patterns  
+                4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
+                5. 📈 **Visualize Results**: Interactive charts & detailed analytics
+
+                ### 🛠️ Technical Features:
+                - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
+                - 🔁 **Cross-validation**: Performance metrics built-in  
+                - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
+                - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
+
+                ### 💡 Pro Tips:
+                - 📅 Use longer timeframes (1y+) for more reliable predictions  
+                - 🌍 Consider external market/economic context  
+                - ⏳ Compare predictions across different timeframes  
+                - 🛡️ Always diversify your portfolio  
+                """)
+                        
+        # 👇 Bottom full-width message
+        st.markdown(
+            """
+            ---
+            👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+            """,
+            unsafe_allow_html=True
+        )
         return
 
     # --- Fetching data (Auto fallback) ---
@@ -499,12 +608,35 @@ def main():
 
     # Basic stock info (lightweight)
     stock_info = {
-        'name': ticker,
-        'sector': 'Unknown',
-        'industry': 'Unknown',
-        'currency': 'USD',
-        'market_cap': 'N/A'
+    # US Stocks
+    'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
+    'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
+    'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'GS': {'name': 'Goldman Sachs Group, Inc.', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
+    'STT': {'name': 'State Street Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'GOOGL': {'name': 'Alphabet Inc.', 'sector': 'Technology', 'industry': 'Internet Services', 'currency': 'USD'},
+    'AMZN': {'name': 'Amazon.com, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
+    'META': {'name': 'Meta Platforms, Inc.', 'sector': 'Communication Services', 'industry': 'Social Media', 'currency': 'USD'},
+    'TSLA': {'name': 'Tesla, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
+    'NVDA': {'name': 'NVIDIA Corporation', 'sector': 'Technology', 'industry': 'Semiconductors', 'currency': 'USD'},
+    'JPM': {'name': 'JPMorgan Chase & Co.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
+    'V': {'name': 'Visa Inc.', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
+    'WMT': {'name': 'Walmart Inc.', 'sector': 'Consumer Defensive', 'industry': 'Discount Stores', 'currency': 'USD'},
+
+    # Indian Stocks
+    'RELIANCE': {'name': 'Reliance Industries Limited', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
+    'TCS': {'name': 'Tata Consultancy Services', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'PARAS': {'name': 'Paras Defence and Space Technologies Ltd.', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
+    'INFY': {'name': 'Infosys Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'HDFCBANK': {'name': 'HDFC Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'ICICIBANK': {'name': 'ICICI Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'HINDUNILVR': {'name': 'Hindustan Unilever Limited', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'INR'},
+    'BHARTIARTL': {'name': 'Bharti Airtel Limited', 'sector': 'Communication Services', 'industry': 'Telecom Services', 'currency': 'INR'},
+    'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
+    'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
     }
+
     # simple currency inference
     currency = 'INR' if ticker.endswith('.NSE') else 'USD'
     currency_symbol = 'INR ' if currency == 'INR' else '$'
@@ -790,7 +922,7 @@ def main():
             except Exception:
                 st.write("- Volume stats: Data not available")
 
-    # Warning disclaimer
+            # Warning disclaimer
         st.markdown("""
         <div class="warning-card">
             <strong>⚠️ Important Disclaimer:</strong><br>
@@ -810,85 +942,8 @@ def main():
             and may fall back to sample data for demonstration when live APIs are unavailable.
         </div>
         """, unsafe_allow_html=True)
-    
-    else:
-        # Welcome screen
-        st.markdown(
-            """
-            <h2 style='
-                text-align: center;
-                font-size: 40px;
-                font-weight: 800;
-                background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                text-decoration: none;
-                margin-bottom: 20px;
-            '>
-                🧠 Cortex-o1 Predictive Model
-            </h2>
-            """,
-            unsafe_allow_html=True
-        )
+        
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("""
-                ### ✨ Premium Features:
-                - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
-                - 🤖 **Advanced AI Models**: Machine learning-powered predictions
-                - 📊 **Comprehensive Analysis**: Technical indicators & market insights
-                - 🎨 **Premium Interface**: Beautiful, responsive dark theme
-                - 📈 **Real-time Charts**: Interactive Plotly visualizations
-                - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
-
-                ### 🌍 Global Market Coverage:
-                **🇺🇸 US Stocks:**
-                - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
-                - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
-                - Meta (META), Netflix (NFLX)
-                - JPMorgan (JPM), Visa (V)
-                - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
-
-                **🇮🇳 Indian Stocks:**
-                - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
-                - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
-                - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
-                - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
-                - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
-                """)
-
-        with col2:
-            st.markdown("""
-                ### 🎯 How It Works:
-                1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
-                2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
-                3. 🤖 **AI Analysis**: ML models learn market patterns  
-                4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
-                5. 📈 **Visualize Results**: Interactive charts & detailed analytics
-
-                ### 🛠️ Technical Features:
-                - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
-                - 🔁 **Cross-validation**: Performance metrics built-in  
-                - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
-                - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
-
-                ### 💡 Pro Tips:
-                - 📅 Use longer timeframes (1y+) for more reliable predictions  
-                - 🌍 Consider external market/economic context  
-                - ⏳ Compare predictions across different timeframes  
-                - 🛡️ Always diversify your portfolio  
-                """)
-                        
-        # 👇 Bottom full-width message
-        st.markdown(
-            """
-            ---
-            👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
-            """,
-            unsafe_allow_html=True
-)
 
 
 if __name__ == "__main__":
