@@ -745,6 +745,9 @@ def main():
         else:
             volatility = df_ind['ret'].std() * np.sqrt(252)
 
+    feature_importance = None
+
+
     # Tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Analysis", "🔮 Predictions", "📈 Charts", "🤖 Models", "📋 Data"])
 
@@ -917,7 +920,8 @@ def main():
                     st.error("❌ Poor model performance. Predictions may be unreliable.")
                 
                 # Feature importance
-                if feature_importance is not None and not feature_importance.empty:
+                if isinstance(feature_importance, pd.DataFrame) and not feature_importance.empty:
+
                     st.markdown("### 🎯 Feature Importance")
                     
                     fig_importance = px.bar(
