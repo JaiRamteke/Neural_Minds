@@ -126,22 +126,66 @@ st.markdown("""
         section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {
             color: #000000 !important;
         }
-        /* Force selectbox to have white background */
-        section[data-testid="stSidebar"] div[data-baseweb="select"] {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border-radius: 6px;
-            border: 1px solid #ddd;
+        
+
+        /* ✅ Make the whole sidebar light */
+        section[data-testid="stSidebar"]{
+        background:#f9f9f9 !important;
+        color:#000 !important;
+
+        /* Override Streamlit theme variables (sidebar scope only) */
+        --background-color:#f9f9f9;
+        --secondary-background-color:#ffffff; /* widgets like selectbox */
+        --text-color:#000000;
+        --font-color:#000000;
+        --border-color:#DDDDDD;
         }
 
-        /* Dropdown menu background */
-        section[data-testid="stSidebar"] ul {
-            background-color: #ffffff !important;
-            color: #000000 !important;
+        /* Ensure all text/icons in sidebar are dark */
+        section[data-testid="stSidebar"] *{
+        color:#000 !important;
+        fill:#000 !important;
         }
-        section[data-testid="stSidebar"] ul li {
-            color: #000000 !important;
+
+        /* ✅ Selectbox control (BaseWeb) – make the control white */
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div{
+        background:#ffffff !important;
+        border:1px solid #ddd !important;
+        border-radius:8px !important;
         }
+
+        /* Value/placeholder text inside the control */
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] *{
+        color:#000 !important;
+        }
+
+        /* Arrow/clear icons */
+        section[data-testid="stSidebar"] .stSelectbox svg{
+        color:#000 !important;
+        fill:#000 !important;
+        }
+
+        /* ✅ Dropdown menu (rendered in a portal – target globally) */
+        div[role="listbox"], ul[role="listbox"]{
+        background:#ffffff !important;
+        color:#000000 !important;
+        border:1px solid #ddd !important;
+        border-radius:8px !important;
+        }
+        li[role="option"]{ color:#000 !important; }
+        li[role="option"][aria-selected="true"],
+        li[role="option"]:hover{ background:#f0f0f0 !important; }
+
+        /* (Optional) Make other sidebar inputs white too */
+        section[data-testid="stSidebar"] .stTextInput > div > div,
+        section[data-testid="stSidebar"] .stNumberInput > div > div,
+        section[data-testid="stSidebar"] .stDateInput > div > div{
+        background:#ffffff !important;
+        border:1px solid #ddd !important;
+        border-radius:8px !important;
+        }
+            
     </style>
 """, unsafe_allow_html=True)
 
