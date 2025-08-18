@@ -304,6 +304,9 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         if 'Close' not in df.columns and 'Adj Close' in df.columns:
             df['Close'] = df['Adj Close']
 
+        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
+        df = df.dropna(subset=['Close'])
+
         df = df[['Date','Open','High','Low','Close','Volume']]
         df['Date'] = pd.to_datetime(df['Date'])
         df.attrs = {'source':'yfinance','ticker':ticker_mapped}
@@ -908,12 +911,9 @@ def main():
 
         # Debug info if still None
         if volatility is None:
-            st.warning(
-                f"⚠️ Volatility could not be computed. "
-                f"Rows: {len(df) if df is not None else 0}, "
-                f"Close exists: {'Close' in df.columns if df is not None else False}, "
-                f"Valid closes: {df['Close'].notna().sum() if df is not None and 'Close' in df.columns else 0}"
-            )
+            st.warning(f"⚠️ Volatility not computed. Rows: {len(df)}, "
+                    f"valid closes: {df['Close'].notna().sum()}, "
+                    f"unique closes: {df['Close'].nunique()}")
 
         # ---------------------------
         # UI Tabs - Tab1 (Stock Analysis)
@@ -1443,6 +1443,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
