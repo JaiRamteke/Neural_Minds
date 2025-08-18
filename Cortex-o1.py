@@ -288,18 +288,27 @@ def test_api_connections():
 def fetch_stock_data_yfinance(ticker, period="1y"):
     try:
         ticker_mapped = map_ticker_for_source(ticker, "yfinance")
-        yf_period_map = {'1mo': '1mo', '3mo': '3mo', '6mo': '6mo', '1y': '1y', '2y': '2y', '5y': '5y'}
+        yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
         yf_period = yf_period_map.get(period, '1y')
+
         df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
         if df.empty:
             return None
+
         df.reset_index(inplace=True)
-        df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
+
+        # Ensure 'Close' exists even if only 'Adj Close' was returned
+        if 'Close' not in df.columns and 'Adj Close' in df.columns:
+            df['Close'] = df['Adj Close']
+
+        df = df[['Date','Open','High','Low','Close','Volume']]
         df['Date'] = pd.to_datetime(df['Date'])
-        df.attrs = {'source': 'yfinance', 'ticker': ticker_mapped}
+        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
         return df
-    except Exception:
+    except Exception as e:
+        st.error(f"yfinance fetch error: {e}")
         return None
+
 
 
 @st.cache_data(ttl=300)
