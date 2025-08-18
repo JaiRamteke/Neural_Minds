@@ -891,27 +891,28 @@ def main():
         # ---------------------------
         # Robust volatility calculation (compute once)
         # ---------------------------
+        # --- Volatility calculation (safe version) ---
         volatility = None
-        is_intraday = False
-        if df is not None and 'Date' in df.columns and pd.api.types.is_datetime64_any_dtype(df['Date']):
-            # detect intraday if any nonzero hour/minute
-            if (df['Date'].dt.hour.max() != 0) or (df['Date'].dt.minute.max() != 0):
-                is_intraday = True
 
-        if df is not None and 'Close' in df.columns and df['Close'].notna().sum() > 2:
-            returns = df['Close'].pct_change().dropna()
-            if not returns.empty:
-                if is_intraday:
-                    volatility = returns.std()
-                else:
-                    volatility = returns.std() * (252 ** 0.5)
+        if df is not None and 'Close' in df.columns:
+            valid_closes = df['Close'].dropna()
+            if len(valid_closes) > 2:
+                returns = valid_closes.pct_change().dropna()
+                if not returns.empty:
+                    if is_intraday:
+                        volatility = returns.std()
+                    else:
+                        # annualize for daily data
+                        volatility = returns.std() * (252 ** 0.5)
 
-        # Debugging: show what’s wrong
+        # Debug info if still None
         if volatility is None:
-            st.warning(f"⚠️ Volatility could not be computed. "
-                    f"Close exists? { 'Close' in df.columns }, "
-                    f"rows: { len(df) if df is not None else 0 }, "
-                    f"valid closes: { df['Close'].notna().sum() if 'Close' in df.columns else 0 }")
+            st.warning(
+                f"⚠️ Volatility could not be computed. "
+                f"Rows: {len(df) if df is not None else 0}, "
+                f"Close exists: {'Close' in df.columns if df is not None else False}, "
+                f"Valid closes: {df['Close'].notna().sum() if df is not None and 'Close' in df.columns else 0}"
+            )
 
         # ---------------------------
         # UI Tabs - Tab1 (Stock Analysis)
