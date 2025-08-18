@@ -1,3 +1,12 @@
+# Cortex-o1-final.py
+# Optimized & cleaned full app (replace your current Cortex-o1-patched-fixed.py with this file)
+# Key improvements:
+# - Reduced Alpha Vantage payload for short periods
+# - Compute indicators once and cache results
+# - Cache expensive model training with st.cache_resource
+# - Downsample for plotly when dataset large
+# - "Quick Mode" for faster training/fetching
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -7,1262 +16,781 @@ from datetime import datetime, timedelta
 import requests
 import time
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import warnings
 warnings.filterwarnings('ignore')
 
-# Try to import yfinance
+# Optional libs (graceful degrade)
 try:
     import yfinance as yf
     YFINANCE_AVAILABLE = True
-except ImportError:
+except Exception:
     YFINANCE_AVAILABLE = False
-    st.warning("⚠️ yfinance not installed. Only Alpha Vantage will be used.")
 
-# Alpha Vantage Configuration
-ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
-AV_BASE_URL = 'https://www.alphavantage.co/query'
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except Exception:
+    PROPHET_AVAILABLE = False
 
-# Page configuration
-st.set_page_config(
-    page_title="Neural Minds",
-    page_icon="brain.png",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+    from tensorflow.keras import layers
+    KERAS_AVAILABLE = True
+except Exception:
+    KERAS_AVAILABLE = False
 
-# Clean White Theme CSS
+# Alpha Vantage
+# Keep using st.secrets for API key as before
+ALPHA_VANTAGE_API_KEY = st.secrets.get("ALPHA_VANTAGE_API_KEY", None)
+AV_BASE_URL = "https://www.alphavantage.co/query"
+
+# Streamlit page config
+st.set_page_config(page_title="Neural Minds", page_icon="🧠", layout="wide", initial_sidebar_state="expanded")
+
+# ---------------------------------------------------------
+# Styling (kept similar to prior file)
+# ---------------------------------------------------------
 st.markdown("""
     <style>
-        /* Import Google Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        /* Headers and Text */
-        .main-header {
-            font-size: 3.5rem;
-            font-weight: 700;
-            background: linear-gradient(45deg, #1f77b4, #ff7f0e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-align: center;
-            margin-bottom: 1rem;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .subtitle {
-            text-align: center;
-            font-size: 1.3rem;
-            color: #666;
-            margin-bottom: 3rem;
-            font-weight: 300;
-        }
-        
-        /* Warning Card */
-        .warning-card {
-            background: #000000;
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid #ffeaa7;
-            margin-top: 2rem;
-            border-left: 4px solid #fdcb6e;
-        }
-        
-        /* Status Indicators */
-        .api-status {
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        
-        .api-working {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .api-failed {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        /* Buttons */
-        .stButton > button {
-            background: linear-gradient(45deg, #1f77b4, #ff7f0e);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-        
-        .stButton > button:hover {
-            background: linear-gradient(45deg, #1565c0, #f57c00);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        /* Hide Streamlit branding */
-        #MainMenu {visibility: visible;}
-        footer {visibility: visible;}
-        header {visibility: visible;}
-            
-        /* Sidebar text fix */
-        section[data-testid="stSidebar"] {
-            background: #f9f9f9;
-            color: #000000;
-        }
-        section[data-testid="stSidebar"] * {
-            color: #000000 !important;
-        }
-        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {
-            color: #000000 !important;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        .main-header { font-size: 3rem; font-weight:700; background: linear-gradient(45deg,#1f77b4,#ff7f0e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align:center; margin-bottom: 0.5rem; font-family: 'Inter', sans-serif; }
+        .subtitle { text-align:center; font-size:1.1rem; color:#666; margin-bottom: 1.5rem; font-weight:300; }
+        .warning-card { background:#000; padding:1.2rem; border-radius:8px; border-left:4px solid #fdcb6e; color:#fff; }
+        .api-status { padding:0.6rem; border-radius:8px; margin:0.6rem 0; }
+        .api-working { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .api-failed { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+        section[data-testid="stSidebar"] { background:#f9f9f9; color:#000; }
     </style>
 """, unsafe_allow_html=True)
 
-# Enhanced stock tickers
+# ---------------------------------------------------------
+# Tickers dictionary (for sidebar picker)
+# ---------------------------------------------------------
 RELIABLE_TICKERS = {
     "US Markets": {
         "AAPL": "Apple Inc.",
         "GOOGL": "Alphabet Inc.",
         "MSFT": "Microsoft Corporation",
-        "BLK": "BlackRock Inc.",
-        "GS": "Goldman Sachs Group Inc.",
-        "STT": "State Street Corporation",
         "TSLA": "Tesla Inc.",
         "AMZN": "Amazon.com Inc.",
         "NVDA": "NVIDIA Corporation",
         "META": "Meta Platforms Inc.",
-        "NFLX": "Netflix Inc.",
         "JPM": "JPMorgan Chase & Co.",
         "V": "Visa Inc."
     },
     "Indian Markets": {
         "RELIANCE.NSE": "Reliance Industries",
         "TCS.NSE": "Tata Consultancy Services",
-        "PARAS.NSE": "Paras Defence and Space Technologies",
         "INFY.NSE": "Infosys Limited",
         "HDFCBANK.NSE": "HDFC Bank",
-        "WIPRO.NSE": "Wipro Limited",
-        "ITC.NSE": "ITC Limited",
         "SBIN.NSE": "State Bank of India",
         "TATAMOTORS.NSE": "Tata Motors",
-        "TATASTEEL.NSE": "Tata Steel",
-        "KOTAKBANK.NSE": "Kotak Mahindra Bank",
-        "BHARTIARTL.NSE": "Bharti Airtel",
-        "HINDUNILVR.NSE": "Hindustan Unilever"
+        "TATASTEEL.NSE": "Tata Steel"
     }
 }
 
-
-
+# ---------------------------------------------------------
+# Utility: map ticker for source (yfinance vs alpha_vantage)
+# ---------------------------------------------------------
 def map_ticker_for_source(ticker: str, source: str) -> str:
-    base = ticker.split('.')[0].upper()
+    """
+    Map user's ticker to the source-specific symbol.
+    - For yfinance, convert .NSE to .NS
+    - For alpha_vantage, use base ticker (Alpha Vantage often expects non-exchange suffix)
+    """
+    if not ticker:
+        return ticker
+    t = ticker.strip().upper()
     if source == "yfinance":
-        if ticker.endswith(".NSE"):
-            return base + ".NS"
-        return base
+        if t.endswith(".NSE"):
+            return t.replace(".NSE", ".NS")
+        return t.split('.')[0]
     if source == "alpha_vantage":
-        if ticker.endswith(".NSE"):
-            return base + ".BSE"
-        return base
-    return ticker
+        # Alpha Vantage expects symbol without .NSE, commonly base ticker works
+        return t.split('.')[0]
+    return t
 
-def test_api_connections():
-    """Test both API connections and return status"""
-    status = {
-        'yfinance': {'available': YFINANCE_AVAILABLE, 'working': False, 'message': ""},
-        'alpha_vantage': {'available': True, 'working': False, 'message': ""}
-    }
-    
-    # Test yfinance
-    if YFINANCE_AVAILABLE:
-        try:
-            test_stock = yf.Ticker("AAPL")
-            test_data = test_stock.history(period="5d")
-            if not test_data.empty:
-                status['yfinance']['working'] = True
-                status['yfinance']['message'] = "✅ yfinance is working"
-            else:
-                status['yfinance']['message'] = "❌ yfinance returned no data"
-        except Exception as e:
-            status['yfinance']['message'] = f"❌ yfinance error: {str(e)[:50]}..."
-    else:
-        status['yfinance']['message'] = "❌ yfinance not installed"
-    
-    # Test Alpha Vantage
-    try:
-        params = {
-            'function': 'TIME_SERIES_DAILY',
-            'symbol': 'AAPL',
-            'apikey': ALPHA_VANTAGE_API_KEY,
-            'outputsize': 'compact'
-        }
-        response = requests.get(AV_BASE_URL, params=params, timeout=15)
-        data = response.json()
-        
-        if 'Time Series (Daily)' in data:
-            status['alpha_vantage']['working'] = True
-            status['alpha_vantage']['message'] = "✅ Alpha Vantage is working"
-        elif 'Note' in data or 'Information' in data:
-            status['alpha_vantage']['message'] = "⚠️ Alpha Vantage rate limit exceeded"
-        elif 'Error Message' in data:
-            status['alpha_vantage']['message'] = f"❌ Alpha Vantage error: {data['Error Message']}"
-        else:
-            status['alpha_vantage']['message'] = "❌ Unknown Alpha Vantage response"
-    except Exception as e:
-        status['alpha_vantage']['message'] = f"❌ Alpha Vantage connection failed: {str(e)[:50]}..."
-    
-    return status
+# ---------------------------------------------------------
+# Small helpers for time periods
+# ---------------------------------------------------------
+def get_period_days(period: str) -> int:
+    return {"1mo":30, "3mo":90, "6mo":180, "1y":365, "2y":730, "5y":1825}.get(period, 365)
 
+# ---------------------------------------------------------
+# Cached fetchers - cache network results for performance
+# ---------------------------------------------------------
+# Use ttl so recent updates refresh occasionally
 @st.cache_data(ttl=300)
-def fetch_stock_data_yfinance(ticker, period="1y"):
+def fetch_stock_data_yfinance(ticker: str, period: str = "1y"):
+    """Fetch via yfinance, minimal processing; returns dataframe or None."""
+    if not YFINANCE_AVAILABLE:
+        return None
     try:
-        ticker_mapped = map_ticker_for_source(ticker, "yfinance")
-        yf_period_map = {'1mo': '1mo', '3mo': '3mo', '6mo': '6mo', '1y': '1y', '2y': '2y', '5y': '5y'}
+        mapped = map_ticker_for_source(ticker, "yfinance")
+        yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
         yf_period = yf_period_map.get(period, '1y')
-        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
-        if df.empty:
+        df = yf.download(mapped, period=yf_period, interval="1d", auto_adjust=False, progress=False)
+        if df is None or df.empty:
             return None
-        df.reset_index(inplace=True)
-        df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
+        df = df.reset_index()
+        df = df.rename(columns={"Date":"Date"})
+        # Standard columns
+        df = df[['Date','Open','High','Low','Close','Volume']].copy()
         df['Date'] = pd.to_datetime(df['Date'])
-        df.attrs = {'source': 'yfinance', 'ticker': ticker_mapped}
+        df.attrs = {'source':'yfinance', 'ticker': mapped}
         return df
     except Exception:
         return None
 
-
 @st.cache_data(ttl=300)
-def fetch_stock_data_unified(ticker, period="1y"):
+def fetch_stock_data_alpha_vantage(ticker: str, period: str = "1y"):
+    """
+    Fetch using Alpha Vantage with smarter 'outputsize' selection to reduce payload.
+    Returns dataframe or None.
+    """
+    if ALPHA_VANTAGE_API_KEY is None:
+        return None
     try:
-        mapped_ticker = map_ticker_for_source(ticker, "alpha_vantage")
-        time.sleep(1)
+        mapped = map_ticker_for_source(ticker, "alpha_vantage")
+        days = get_period_days(period)
+        # Use 'compact' if asking for <= 2 years to reduce payload
+        outputsize = 'compact' if days <= 730 else 'full'
+        # TIME_SERIES_DAILY returns daily series
         params = {
             'function': 'TIME_SERIES_DAILY',
-            'symbol': mapped_ticker,
+            'symbol': mapped,
             'apikey': ALPHA_VANTAGE_API_KEY,
-            'outputsize': 'full',
+            'outputsize': outputsize,
             'datatype': 'json'
         }
-        response = requests.get(AV_BASE_URL, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        if 'Error Message' in data or 'Time Series (Daily)' not in data:
+        resp = requests.get(AV_BASE_URL, params=params, timeout=20)
+        data = resp.json()
+        # Rate limit / error handling
+        if 'Time Series (Daily)' not in data:
             return None
-
-        df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index')
-        df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-        df = df.astype(float)
+        ts = data['Time Series (Daily)']
+        df = pd.DataFrame.from_dict(ts, orient='index')
+        df = df.rename(columns={
+            '1. open':'Open','2. high':'High','3. low':'Low','4. close':'Close','5. volume':'Volume'
+        })
+        df = df[['Open','High','Low','Close','Volume']].astype(float)
         df.index = pd.to_datetime(df.index)
-        df = df.sort_index().reset_index().rename(columns={'index': 'Date'})
-        days = get_period_days(period)
+        df = df.sort_index().reset_index().rename(columns={'index':'Date'})
+        # Trim to requested period days
         start_date = datetime.now() - timedelta(days=days)
-        df = df[df['Date'] >= start_date]
-        df['Date'] = pd.to_datetime(df['Date'])
-        df.attrs = {'source': 'alpha_vantage'}
+        df = df[df['Date'] >= start_date].copy()
+        df.attrs = {'source':'alpha_vantage', 'ticker': mapped}
         return df
     except Exception:
         return None
 
-def load_stock_data_auto(ticker, period="1y"):
-    """
-    Try yfinance -> Alpha Vantage -> sample, and return (df, used_source, trace_list)
-    where trace_list is a list of (source_key, human_message).
-    """
-    trace = []
-
-    # 1) yfinance (preferred)
-    if YFINANCE_AVAILABLE:
-        df_yf = fetch_stock_data_yfinance(ticker, period)
-        if df_yf is not None:
-            trace.append(("yfinance", "✅ yfinance loaded successfully"))
-            return df_yf, "yfinance", trace
-        else:
-            trace.append(("yfinance", "❌ yfinance failed (no/invalid data)"))
-    else:
-        trace.append(("yfinance", "❌ yfinance not installed"))
-
-    # 2) Alpha Vantage (backup)
-    df_av = fetch_stock_data_unified(ticker, period)
-    if df_av is not None:
-        trace.append(("alpha_vantage", "✅ Alpha Vantage loaded successfully"))
-        return df_av, "alpha_vantage", trace
-    else:
-        trace.append(("alpha_vantage", "❌ Alpha Vantage failed (no/invalid data)"))
-
-    # 3) Sample (last resort)
-    df_sample = create_sample_data(ticker, period)
-    df_sample.attrs['source'] = 'sample_data'
-    trace.append(("sample_data", "⚠️ Using sample data (both APIs unavailable)"))
-    return df_sample, "sample_data", trace
-
-
-def get_period_days(period):
-    return {'1mo':30,'3mo':90,'6mo':180,'1y':365,'2y':730,'5y':1825}.get(period,365)
-
-def create_sample_data(ticker, period):
-    """Create realistic sample data when APIs fail"""
+def create_sample_data(ticker: str, period: str = "1y"):
+    """Fallback synthetic sample data (kept simple and fast)."""
     days = get_period_days(period)
-    
-    # Base prices for different stocks
-    base_prices = {
-    # US Markets
-    'AAPL': 180,
-    'GOOGL': 140,
-    'MSFT': 330,
-    'BLK': 700,        # BlackRock
-    'GS': 340,         # Goldman Sachs
-    'STT': 70,         # State Street
-    'TSLA': 250,
-    'AMZN': 140,
-    'NVDA': 450,
-    'META': 300,
-    'NFLX': 400,
-    'JPM': 150,        # JPMorgan
-    'V': 230,          # Visa
-    
-    # Indian Markets
-    'RELIANCE': 2500,
-    'TCS': 3500,
-    'PARAS': 700,      # Paras Defence
-    'INFY': 1500,
-    'HDFCBANK': 1600,
-    'WIPRO': 400,
-    'ITC': 450,
-    'SBIN': 600,
-    'TATAMOTORS': 650,
-    'TATASTEEL': 120,
-    'KOTAKBANK': 1900,
-    'BHARTIARTL': 850,
-    'HINDUNILVR': 2500
-}
-    
     base_name = ticker.split('.')[0].upper()
-    base_price = base_prices.get(base_name, 1000)
-    
-    # Generate realistic data
-    np.random.seed(hash(ticker) % 2**32)
+    # use a small dictionary of base prices
+    base_prices = {
+        'AAPL': 175, 'GOOGL': 140, 'MSFT': 330, 'TSLA': 250, 'AMZN': 140,
+        'NVDA': 450, 'META': 300, 'RELIANCE': 2500, 'TCS': 3500, 'INFY': 1500
+    }
+    base_price = base_prices.get(base_name, 300.0)
+    np.random.seed(abs(hash(ticker)) % (2**32))
     dates = pd.date_range(end=datetime.now(), periods=days, freq='B')
-    
-    # Generate price movements
-    daily_return = 0.08 / 252
-    volatility = 0.02
-    returns = np.random.normal(daily_return, volatility, days)
-    
-    prices = [base_price]
-    for i in range(1, days):
-        new_price = prices[-1] * (1 + returns[i])
-        new_price = max(new_price, base_price * 0.5)
-        new_price = min(new_price, base_price * 3.0)
-        prices.append(new_price)
-    
-    # Generate OHLC data
+    prices = base_price * np.cumprod(1 + np.random.normal(0.0003, 0.02, size=len(dates)))
     data = []
-    for i, close_price in enumerate(prices):
-        daily_vol = abs(np.random.normal(0, 0.015))
-        
-        if i == 0:
-            open_price = close_price
-        else:
-            gap = np.random.normal(0, 0.005)
-            open_price = prices[i-1] * (1 + gap)
-        
-        intraday_range = abs(np.random.normal(0, daily_vol))
-        high = max(open_price, close_price) * (1 + intraday_range)
-        low = min(open_price, close_price) * (1 - intraday_range)
-        
-        high = max(open_price, close_price, high)
-        low = min(open_price, close_price, low)
-        
-        base_volume = 1000000 if base_price < 1000 else 100000
-        volume = int(np.random.lognormal(np.log(base_volume), 0.8))
-        
-        data.append({
-            'Date': dates[i],
-            'Open': round(open_price, 2),
-            'High': round(high, 2),
-            'Low': round(low, 2),
-            'Close': round(close_price, 2),
-            'Volume': volume
-        })
-    
+    for i, d in enumerate(dates):
+        close = float(prices[i])
+        openp = float(prices[i] * (1 + np.random.normal(0, 0.002)))
+        high = float(max(openp, close) * (1 + abs(np.random.normal(0, 0.01))))
+        low = float(min(openp, close) * (1 - abs(np.random.normal(0, 0.01))))
+        vol = int(np.random.lognormal(np.log(100000), 0.8))
+        data.append({'Date': d, 'Open': round(openp,2), 'High': round(high,2), 'Low': round(low,2), 'Close': round(close,2), 'Volume': vol})
     df = pd.DataFrame(data)
     df.attrs = {'source': 'sample_data', 'ticker': ticker}
     return df
 
-def calculate_rsi(prices, window=14):
-    """Calculate Relative Strength Index"""
-    delta = prices.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
-def process_stock_data(df, ticker, source):
-    """Process and enhance stock data with technical indicators"""
+# ---------------------------------------------------------
+# Indicator computations (compute once, cache)
+# ---------------------------------------------------------
+@st.cache_data(ttl=300)
+def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute technical indicators once and return new dataframe (copy)."""
     if df is None or df.empty:
-        return None
-    
-    # Ensure Date column exists
-    if 'Date' not in df.columns and df.index.name == 'Date':
-        df = df.reset_index()
-    
-    # Add technical indicators
-    df['MA_20'] = df['Close'].rolling(window=20).mean()
-    df['MA_50'] = df['Close'].rolling(window=50).mean()
-    df['RSI'] = calculate_rsi(df['Close'])
-    df['Price_Change'] = df['Close'].pct_change()
-    df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
-    
-    # Add lag features
-    for i in [1, 2, 3, 5]:
+        return df
+    df = df.copy()
+    # Ensure Date is datetime and sorted
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
+        df = df.sort_values('Date').reset_index(drop=True)
+    # Moving averages
+    df['MA_20'] = df['Close'].rolling(window=20,min_periods=5).mean()
+    df['MA_50'] = df['Close'].rolling(window=50,min_periods=10).mean()
+    # RSI (simple implementation)
+    delta = df['Close'].diff()
+    gain = delta.clip(lower=0).rolling(14).mean()
+    loss = (-delta).clip(lower=0).rolling(14).mean()
+    rs = gain / (loss + 1e-12)
+    df['RSI'] = 100 - (100 / (1 + rs))
+    # Bollinger Bands
+    ma = df['Close'].rolling(20).mean()
+    std = df['Close'].rolling(20).std(ddof=0)
+    df['BB_MA'] = ma
+    df['BB_UPPER'] = ma + 2 * std
+    df['BB_LOWER'] = ma - 2 * std
+    # MACD
+    ema_fast = df['Close'].ewm(span=12, adjust=False).mean()
+    ema_slow = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = ema_fast - ema_slow
+    df['MACD_SIGNAL'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    df['MACD_HIST'] = df['MACD'] - df['MACD_SIGNAL']
+    # ATR (Average True Range)
+    prev_close = df['Close'].shift(1)
+    tr1 = df['High'] - df['Low']
+    tr2 = (df['High'] - prev_close).abs()
+    tr3 = (df['Low'] - prev_close).abs()
+    df['TR'] = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    df['ATR'] = df['TR'].rolling(14).mean()
+    # VWAP (typical price * volume cumulative)
+    tp = (df['High'] + df['Low'] + df['Close']) / 3
+    vol = df['Volume'].replace(0, np.nan).fillna(method='ffill').fillna(1)
+    df['VWAP'] = (tp * vol).cumsum() / vol.cumsum()
+    # Returns and volatility
+    df['ret'] = df['Close'].pct_change()
+    df['logret'] = np.log(df['Close']).diff()
+    df['ret2'] = df['ret'] ** 2
+    # Lag features for modeling
+    for i in [1,2,3,5]:
         df[f'Close_Lag_{i}'] = df['Close'].shift(i)
-    
-    # Remove rows with NaN values
-    df = df.dropna()
-    
-    # Add metadata
-    df.attrs = {
-        'source': source,
-        'ticker': ticker,
-        'last_updated': datetime.now()
-    }
-    
+    # Drop rows with NaNs from rolling windows (keep later for modeling)
+    df = df.dropna().reset_index(drop=True)
+    # Save metadata
+    df.attrs['indicators_computed'] = True
+    df.attrs['last_indicator_run'] = datetime.now()
     return df
 
-def prepare_features(df):
-    """Prepare features for machine learning"""
-    feature_columns = [
-        'Open', 'High', 'Low', 'Volume', 'MA_20', 'MA_50', 'RSI',
-        'Price_Change', 'Volume_MA'
-    ]
-    
-    # Add lag features
-    for i in [1, 2, 3, 5]:
-        if f'Close_Lag_{i}' in df.columns:
-            feature_columns.append(f'Close_Lag_{i}')
-    
-    # Select only existing columns
-    existing_features = [col for col in feature_columns if col in df.columns]
-    
-    X = df[existing_features].copy()
+# ---------------------------------------------------------
+# Small risk & stat utilities
+# ---------------------------------------------------------
+def sharpe_ratio(df: pd.DataFrame, rf_daily: float=0.0):
+    r = df['ret'].dropna()
+    if r.empty: return np.nan
+    excess = r - rf_daily
+    return float(np.sqrt(252) * excess.mean() / (excess.std(ddof=0) + 1e-12))
+
+def drawdown_stats(df: pd.DataFrame):
+    s = df['Close'].astype(float)
+    cum_max = s.cummax()
+    dd = s / cum_max - 1.0
+    max_dd = float(dd.min()) if not dd.empty else np.nan
+    total_ret = s.iloc[-1] / s.iloc[0] - 1.0 if len(s) > 1 else np.nan
+    years = max((df['Date'].iloc[-1] - df['Date'].iloc[0]).days / 365.25, 1e-9)
+    ann_ret = (1 + total_ret) ** (1/years) - 1 if years > 0 else np.nan
+    calmar = float(ann_ret / abs(max_dd)) if max_dd < 0 else np.nan
+    return dd, max_dd, ann_ret, calmar
+
+def vol_clustering_score(df: pd.DataFrame, lag: int = 1):
+    r2 = df['ret2'].dropna()
+    if len(r2) < lag + 1: return np.nan
+    return float(r2.autocorr(lag=lag))
+
+# ---------------------------------------------------------
+# Modeling helpers (with caching to avoid re-train)
+# ---------------------------------------------------------
+def prepare_features(df: pd.DataFrame):
+    """Return X, y, feature list for regression on Close"""
+    feature_columns = ['Open','High','Low','Volume','MA_20','MA_50','RSI','Price_Change','Volume_MA']
+    # include lag features if present
+    for i in [1,2,3,5]:
+        feature_columns.append(f'Close_Lag_{i}')
+    existing = [c for c in feature_columns if c in df.columns]
+    X = df[existing].copy()
     y = df['Close'].copy()
-    
-    return X, y, existing_features
+    return X, y, existing
 
-def train_model(df):
-    """Train Random Forest model"""
-    try:
-        X, y, feature_names = prepare_features(df)
-        
-        if X.empty or y.empty:
-            st.error("Insufficient data for training")
-            return None, None, None, None
-        
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, shuffle=False
-        )
-        
-        # Scale features
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
-        
-        # Train model
-        model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=10,
-            random_state=42,
-            n_jobs=-1
-        )
+@st.cache_resource
+def train_random_forest_cached(key: str, X_train_array, y_train_array, n_estimators:int=100, max_depth:int=12):
+    """
+    Cache training by key (string dependent on ticker/period/params).
+    st.cache_resource caches Python objects (model) across reruns.
+    """
+    model = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, random_state=42, n_jobs=-1)
+    model.fit(X_train_array, y_train_array)
+    return model
 
-        model.fit(X_train_scaled, y_train)
-        
-        # Make predictions
-        y_train_pred = model.predict(X_train_scaled)
-        y_test_pred = model.predict(X_test_scaled)
-        
-        # Calculate metrics
-        metrics = {
-            'train_rmse': np.sqrt(mean_squared_error(y_train, y_train_pred)),
-            'test_rmse': np.sqrt(mean_squared_error(y_test, y_test_pred)),
-            'train_mae': mean_absolute_error(y_train, y_train_pred),
-            'test_mae': mean_absolute_error(y_test, y_test_pred),
-            'train_r2': r2_score(y_train, y_train_pred),
-            'test_r2': r2_score(y_test, y_test_pred),
-            'train_size': len(X_train),
-            'test_size': len(X_test)
-        }
-        # Feature importance
-        feature_importance = pd.DataFrame({
-            'feature': feature_names,
-            'importance': model.feature_importances_
-        }).sort_values('importance', ascending=False)
-
-        return model, scaler, metrics, feature_importance
-        
-    except Exception as e:
-        st.error(f"Error training model: {str(e)}")
-        return None, None, None, None
-
-def predict_next_price(model, scaler, df):
-    """Predict next day price"""
-    try:
-        X, _, feature_names = prepare_features(df)
-        if X.empty:
-            return None
-            
-        last_features = X.iloc[-1:].values
-        last_features_scaled = scaler.transform(last_features)
-        prediction = model.predict(last_features_scaled)[0]
-        return prediction
-        
-    except Exception as e:
-        st.error(f"Error making prediction: {str(e)}")
-        return None
-
-def get_stock_info(ticker):
-    """Get default stock information"""
-    stock_info = {
-    # US Stocks
-    'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
-    'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
-    'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
-    'GS': {'name': 'Goldman Sachs Group, Inc.', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
-    'STT': {'name': 'State Street Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
-    'GOOGL': {'name': 'Alphabet Inc.', 'sector': 'Technology', 'industry': 'Internet Services', 'currency': 'USD'},
-    'AMZN': {'name': 'Amazon.com, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
-    'META': {'name': 'Meta Platforms, Inc.', 'sector': 'Communication Services', 'industry': 'Social Media', 'currency': 'USD'},
-    'TSLA': {'name': 'Tesla, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
-    'NVDA': {'name': 'NVIDIA Corporation', 'sector': 'Technology', 'industry': 'Semiconductors', 'currency': 'USD'},
-    'JPM': {'name': 'JPMorgan Chase & Co.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
-    'V': {'name': 'Visa Inc.', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
-    'WMT': {'name': 'Walmart Inc.', 'sector': 'Consumer Defensive', 'industry': 'Discount Stores', 'currency': 'USD'},
-
-    # Indian Stocks
-    'RELIANCE': {'name': 'Reliance Industries Limited', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
-    'TCS': {'name': 'Tata Consultancy Services', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
-    'PARAS': {'name': 'Paras Defence and Space Technologies Ltd.', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
-    'INFY': {'name': 'Infosys Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
-    'HDFCBANK': {'name': 'HDFC Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-    'ICICIBANK': {'name': 'ICICI Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-    'HINDUNILVR': {'name': 'Hindustan Unilever Limited', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'INR'},
-    'BHARTIARTL': {'name': 'Bharti Airtel Limited', 'sector': 'Communication Services', 'industry': 'Telecom Services', 'currency': 'INR'},
-    'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-    'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
-    'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+def train_model_rf(df: pd.DataFrame, test_ratio: float = 0.2, n_estimators: int = 100, max_depth: int = 12):
+    """Train RF using prepared features. Uses cache_resource for the model."""
+    X, y, feat = prepare_features(df)
+    if X.empty or y.empty:
+        return None, None, None
+    # create time-based split
+    split_idx = int(len(X) * (1 - test_ratio))
+    X_train = X.iloc[:split_idx]
+    X_test = X.iloc[split_idx:]
+    y_train = y.iloc[:split_idx]
+    y_test = y.iloc[split_idx:]
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    # Create cache key from df attrs + params
+    # NOTE: For simplicity, we ask the caller to provide a deterministic key
+    model_key = f"rf_{n_estimators}_{max_depth}_{len(X_train)}_{hash(tuple(np.round(X_train.iloc[-1].fillna(0).values,3)))}"
+    model = train_random_forest_cached(model_key, X_train_scaled, y_train.values, n_estimators=n_estimators, max_depth=max_depth)
+    y_train_pred = model.predict(X_train_scaled)
+    y_test_pred = model.predict(X_test_scaled)
+    metrics = {
+        'train_rmse': float(np.sqrt(mean_squared_error(y_train, y_train_pred))),
+        'test_rmse': float(np.sqrt(mean_squared_error(y_test, y_test_pred))),
+        'train_mae': float(mean_absolute_error(y_train, y_train_pred)),
+        'test_mae': float(mean_absolute_error(y_test, y_test_pred)),
+        'train_r2': float(r2_score(y_train, y_train_pred)),
+        'test_r2': float(r2_score(y_test, y_test_pred)),
+        'train_size': len(X_train),
+        'test_size': len(X_test)
     }
+    # Feature importance
+    fi = pd.DataFrame({'feature': feat, 'importance': model.feature_importances_}).sort_values('importance', ascending=False)
+    return model, scaler, metrics, fi
 
-    
-    base_ticker = ticker.split('.')[0].upper()
-    info = stock_info.get(base_ticker, {
+def predict_next_day_from_rf(model, scaler, df: pd.DataFrame):
+    """Return next-day predicted close using last available features."""
+    X, _, feat = prepare_features(df)
+    if X.empty:
+        return None
+    last = X.iloc[-1:].values
+    last_scaled = scaler.transform(last)
+    pred = float(model.predict(last_scaled)[0])
+    return pred
+
+# ---------------------------------------------------------
+# UI helpers: banners, downsampling
+# ---------------------------------------------------------
+def show_data_banner(source: str, n_points: int, ticker: str):
+    if source == 'sample_data':
+        st.warning(f"⚠️ SAMPLE DATA — Real-time data unavailable. Showing synthetic series for **{ticker}** ({n_points} points).")
+    elif source in ('yfinance','alpha_vantage'):
+        src_name = "Yahoo Finance" if source == 'yfinance' else 'Alpha Vantage'
+        st.success(f"✅ LIVE DATA — Loaded **{n_points}** points for **{ticker}** from **{src_name}**.")
+    else:
+        st.info(f"ℹ️ Data source: {source} — {n_points} points for {ticker}.")
+
+def downsample_for_plot(df: pd.DataFrame, max_points: int = 1500) -> pd.DataFrame:
+    """Downsample dataframe for faster plotting while preserving endpoints."""
+    n = len(df)
+    if n <= max_points:
+        return df
+    # keep first 50 + last 50 then sample the middle
+    head = df.iloc[:50]
+    tail = df.iloc[-50:]
+    middle = df.iloc[50:-50]
+    frac = max_points - 100
+    # compute approximate fraction
+    if len(middle) <= 0:
+        sampled = pd.concat([head, tail])
+        return sampled
+    sample_frac = max(0.001, min(1.0, frac / len(middle)))
+    mid_sampled = middle.sample(frac=sample_frac, random_state=42).sort_index()
+    return pd.concat([head, mid_sampled, tail]).sort_values('Date').reset_index(drop=True)
+
+# ---------------------------------------------------------
+# Main app layout and logic
+# ---------------------------------------------------------
+def main():
+    st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Advanced Market Analysis & AI-Powered Prediction Platform</p>', unsafe_allow_html=True)
+
+    # Sidebar controls
+    with st.sidebar:
+        st.markdown("### ⚙️ Configuration")
+        data_source_choice = st.selectbox("Select Data Source", ["Auto (yfinance → Alpha Vantage → Sample)", "yfinance", "Alpha Vantage"], index=0)
+        market = st.selectbox("Select Market", ["US Stocks", "Indian Stocks", "Custom Ticker"])
+        if market == "US Stocks":
+            selected_stock = st.selectbox("Select Stock", list(RELIABLE_TICKERS["US Markets"].keys()))
+            ticker = selected_stock
+        elif market == "Indian Stocks":
+            selected_stock = st.selectbox("Select Stock", list(RELIABLE_TICKERS["Indian Markets"].keys()))
+            ticker = selected_stock
+        else:
+            ticker = st.text_input("Enter Stock Ticker (Example: AAPL or RELIANCE.NSE)", value="AAPL")
+        period = st.selectbox("Select Period", ["1mo","3mo","6mo","1y","2y","5y"], index=3)
+        quick_mode = st.checkbox("Quick Mode (faster fetch & smaller training set)", value=True, help="Quick mode limits data & model training size for speed")
+        prediction_days = st.slider("Days to predict (for modeling)", 1, 30, 7)
+        predict_button = st.button("🚀 Analyze & Predict", use_container_width=True)
+
+    # Welcome screen logic if not clicked
+    if not predict_button:
+        st.markdown("""
+            <h2 style="text-align:center; font-weight:700;">🧠 Cortex-o1 Predictive Model</h2>
+            <p style="text-align:center;">Use the sidebar to pick a stock, choose data source, and run analysis & predictions.</p>
+        """, unsafe_allow_html=True)
+        return
+
+    # --- Fetching data (Auto fallback) ---
+    with st.spinner("🔄 Fetching data..."):
+        df = None
+        used_source = None
+        trace_msgs = []
+        # Auto logic
+        if data_source_choice.startswith("Auto"):
+            # Try yfinance first if available
+            if YFINANCE_AVAILABLE:
+                df = fetch_stock_data_yfinance(ticker, period)
+                if df is not None:
+                    used_source = 'yfinance'
+                    trace_msgs.append(("yfinance", "✅ yfinance loaded successfully"))
+                else:
+                    trace_msgs.append(("yfinance","❌ yfinance failed"))
+            # Try Alpha Vantage
+            if df is None and ALPHA_VANTAGE_API_KEY:
+                df = fetch_stock_data_alpha_vantage(ticker, period)
+                if df is not None:
+                    used_source = 'alpha_vantage'
+                    trace_msgs.append(("alpha_vantage", "✅ Alpha Vantage loaded successfully"))
+                else:
+                    trace_msgs.append(("alpha_vantage", "❌ Alpha Vantage failed or rate-limited"))
+            # Fallback to sample
+            if df is None:
+                df = create_sample_data(ticker, period)
+                used_source = 'sample_data'
+                trace_msgs.append(("sample_data", "⚠️ Using synthetic sample data"))
+        elif data_source_choice == "yfinance":
+            df = fetch_stock_data_yfinance(ticker, period) if YFINANCE_AVAILABLE else None
+            used_source = 'yfinance' if df is not None else None
+            if df is None:
+                st.warning("yfinance failed; falling back to Alpha Vantage then sample...")
+                df = fetch_stock_data_alpha_vantage(ticker, period) if ALPHA_VANTAGE_API_KEY else None
+                used_source = 'alpha_vantage' if df is not None else used_source
+            if df is None:
+                df = create_sample_data(ticker, period)
+                used_source = 'sample_data'
+        else:  # explicit Alpha Vantage
+            df = fetch_stock_data_alpha_vantage(ticker, period) if ALPHA_VANTAGE_API_KEY else None
+            used_source = 'alpha_vantage' if df is not None else None
+            if df is None and YFINANCE_AVAILABLE:
+                st.warning("Alpha Vantage failed; trying yfinance...")
+                df = fetch_stock_data_yfinance(ticker, period)
+                used_source = 'yfinance' if df is not None else used_source
+            if df is None:
+                df = create_sample_data(ticker, period)
+                used_source = 'sample_data'
+
+    # Show short trace of source attempts if present
+    if 'trace_msgs' in locals() and trace_msgs:
+        st.markdown("#### 🔎 Source trace")
+        for src, msg in trace_msgs:
+            css = "api-working" if "✅" in msg else "api-failed"
+            st.markdown(f'<div class="api-status {css}">{msg}</div>', unsafe_allow_html=True)
+
+    if df is None or df.empty:
+        st.error("Unable to retrieve any data. Try a different ticker or ensure API keys are configured.")
+        return
+
+    # Compute indicators once (cached)
+    with st.spinner("🧮 Computing indicators..."):
+        df_ind = compute_indicators(df)
+
+    # Show data banner
+    data_source = df.attrs.get('source', used_source)
+    show_data_banner(data_source, len(df_ind), ticker)
+
+    # Basic stock info (lightweight)
+    stock_info = {
         'name': ticker,
         'sector': 'Unknown',
         'industry': 'Unknown',
-        'currency': 'USD'
-    })
-    
-    info['market_cap'] = 'N/A'
-    return info
+        'currency': 'USD',
+        'market_cap': 'N/A'
+    }
+    # simple currency inference
+    currency = 'INR' if ticker.endswith('.NSE') else 'USD'
+    currency_symbol = 'INR ' if currency == 'INR' else '$'
 
-# ---------------------------
-# Safe-stat helper + Volatility computation placement
-# ---------------------------
-def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
-    """
-    Safely compute a statistic on a dataframe column and display with Streamlit.
-    """
-    try:
-        if df is not None and col in df.columns and not df[col].dropna().empty:
-            val = func(df[col].dropna())
-            if pd.notna(val):
-                st.write(f"- {label}: {currency_symbol}{fmt.format(val)}")
-                return
-    except Exception:
-        pass
-    st.write(f"- {label}: Data not available")
-
-def main():
-    # Title and description
-    st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
-    st.markdown(
-    """
-    <p style='
-        text-align: center;
-        font-size: 20px;
-        font-weight: 500;
-        background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-top: -10px;
-        margin-bottom: 20px;
-    '>
-        Advanced Market Analysis & AI-Powered Prediction Platform
-    </p>
-    """,
-    unsafe_allow_html=True
-    )
-
-    # Initialize variables (🔑 init once here)
-    df, current_price = None, None
+    # Derive volatility and intraday detection
+    is_intraday = False
+    if 'Date' in df_ind.columns:
+        if df_ind['Date'].dt.hour.max() != 0 or df_ind['Date'].dt.minute.max() != 0:
+            is_intraday = True
     volatility = None
-    current_price_val = None
-    currency_symbol = '$'
-
-    # API Status Check
-    with st.expander("🔍 API Status Check", expanded=False):
-        if st.button("🔄 Test API Connections", type="primary"):
-            with st.spinner("Testing API connections..."):
-                api_status = test_api_connections()
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("📊 yfinance Status")
-                if api_status['yfinance']['working']:
-                    st.markdown(f'<div class="api-status api-working">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="api-status api-failed">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
-            
-            with col2:
-                st.subheader("🔑 Alpha Vantage Status")
-                if api_status['alpha_vantage']['working']:
-                    st.markdown('<div class="api-status api-working">✅ Alpha Vantage is working</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
-
-    # Sidebar for inputs
-    with st.sidebar:
-        st.markdown("### ⚙️ Configuration")
-
-        st.markdown(
-            """
-            <style>
-            .api-badge {
-                background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-                color: white;
-                padding: 8px 18px;
-                border-radius: 25px;
-                font-size: 15px;
-                font-weight: 600;
-                display: inline-block;
-                box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-                animation: pulse 2s infinite;
-            }
-
-            @keyframes pulse {
-                0% { box-shadow: 0 0 0 0 rgba(79,172,254,0.6); }
-                70% { box-shadow: 0 0 0 12px rgba(79,172,254,0); }
-                100% { box-shadow: 0 0 0 0 rgba(79,172,254,0); }
-            }
-            </style>
-
-            <div class="api-badge">💎 Premium API Access Enabled</div>
-            """,
-            unsafe_allow_html=True
-        )
-                # Data source selection (default yfinance)
-        st.markdown("#### 📡 Data Source")
-        data_source_choice = st.selectbox(
-            "Select Data Source",
-            ["yfinance", "Alpha Vantage", "Auto (yfinance → Alpha Vantage → Sample)"],
-            index=0,
-            help="Choose the data source. 'Auto' tries yfinance first, then Alpha Vantage, then sample data."
-        )
-
-        
-        # Stock selection
-        st.markdown("#### 📈 Stock Selection")
-        
-        market = st.selectbox(
-            "Select Market",
-            ["US Stocks", "Indian Stocks", "Custom Ticker"],
-            help="Choose your preferred market or enter a custom ticker"
-        )
-        
-        if market == "US Stocks":
-            stock_options = RELIABLE_TICKERS["US Markets"]
-            selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
-            ticker = selected_stock
-            st.info(f"📊 Selected: {stock_options[selected_stock]}")
-            
-        elif market == "Indian Stocks":
-            stock_options = RELIABLE_TICKERS["Indian Markets"]
-            selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
-            ticker = selected_stock
-            st.info(f"🇮🇳 Selected: {stock_options[selected_stock]}")
-            
-        else:  # Custom ticker
-            ticker = st.text_input(
-                "Enter Stock Ticker",
-                value="AAPL",
-                help="Examples: AAPL (US), RELIANCE.NSE (Indian stocks with .NSE extension)"
-            )
-            
-            if ticker:
-                if ticker.endswith('.NSE'):
-                    st.info("🇮🇳 Indian stock format detected")
-                else:
-                    st.info("🇺🇸 US stock format detected")
-        
-        # Time period selection
-        st.markdown("#### 📅 Time Period")
-        period = st.selectbox(
-            "Select Period",
-            ["1mo", "3mo", "6mo", "1y", "2y", "5y"],
-            index=3,
-            help="Choose the historical data period for analysis"
-        )
-
-        # Prediction settings
-        st.markdown("#### 🔮 Prediction Settings")
-        prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
-        
-        # Action button
-        predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
-
-    # Main content area
-    if predict_button:
-        if not ticker:
-            st.error("Please enter a stock ticker symbol!")
-            return
-        
-        # Create tabs for different views
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "📊 Stock Analysis", 
-            "🔮 Predictions", 
-            "📈 Charts", 
-            "🤖 Model Performance", 
-            "📋 Data Table"
-        ])
-        
-        # Fetch stock data depending on user choice
-        with st.spinner(f"🔄 Fetching stock data from {data_source_choice}..."):
-            if data_source_choice.startswith("yfinance"):
-                df = fetch_stock_data_yfinance(ticker, period) if YFINANCE_AVAILABLE else None
-                used_source = "yfinance" if df is not None else None
-                if df is None:
-                    st.warning("⚠️ yfinance failed, trying Alpha Vantage...")
-                    df = fetch_stock_data_unified(ticker, period)
-                    used_source = "alpha_vantage" if df is not None else None
-
-            elif data_source_choice.startswith("Alpha Vantage"):
-                df = fetch_stock_data_unified(ticker, period)
-                used_source = "alpha_vantage" if df is not None else None
-                if df is None and YFINANCE_AVAILABLE:
-                    st.warning("⚠️ Alpha Vantage failed, trying yfinance...")
-                    df = fetch_stock_data_yfinance(ticker, period)
-                    used_source = "yfinance" if df is not None else None
-
-            else:  # Auto mode
-                df, used_source, trace = load_stock_data_auto(ticker, period)
-                # Inline API call status
-                st.markdown("#### 🔎 API Call Status")
-                for src, msg in trace:
-                    css_class = "api-working" if "✅" in msg else "api-failed"
-                    st.markdown(f'<div class="api-status {css_class}">{msg}</div>', unsafe_allow_html=True)
-
-        # If still nothing, drop to sample
-        if df is None or df.empty:
-            st.error("❌ Unable to fetch real data. Using sample data.")
-            df = create_sample_data(ticker, period)
-            used_source = "sample_data"
-
-        # Process the data
-        data_source = df.attrs.get('source', used_source)
-        df = process_stock_data(df, ticker, data_source)
-
-        if df is None or df.empty:
-            st.error("❌ Unable to process stock data. Please try again.")
-            return
-
-        # Display data source info
-        if data_source == 'sample_data':
-            st.warning("⚠️ Using sample data for demonstration. Real-time data unavailable.")
+    if 'ret' in df_ind.columns and not df_ind['ret'].dropna().empty:
+        if is_intraday:
+            volatility = df_ind['ret'].std()
         else:
-            st.success(f"✅ Successfully loaded {len(df)} data points for {ticker} from {data_source}")
-        
-        # Get stock info and set currency/curr symbol ONCE
-        stock_info = get_stock_info(ticker)
-        currency = stock_info.get('currency', 'USD')
-        currency_symbol = '$' if currency == 'USD' else 'INR '
+            volatility = df_ind['ret'].std() * np.sqrt(252)
 
-        # Safe, single-point assignment of current_price_val
-        if df is not None and not df.empty and 'Close' in df.columns:
+    # Tabs
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Analysis", "🔮 Predictions", "📈 Charts", "🤖 Models", "📋 Data"])
+
+    # -------------------- TAB 1: Analysis --------------------
+    with tab1:
+        st.subheader(f"Market Analysis — {stock_info['name']} ({ticker})")
+        sr = sharpe_ratio(df_ind)
+        dd, max_dd, ann_ret, calmar = drawdown_stats(df_ind)
+        st.metric("Sharpe", f"{sr:.2f}" if pd.notna(sr) else "—")
+        st.metric("Max Drawdown", f"{max_dd:.2%}" if pd.notna(max_dd) else "—")
+        st.metric("Annualized Return", f"{ann_ret:.2%}" if pd.notna(ann_ret) else "—")
+
+        # Show bollinger + vwap chart (downsample for speed)
+        plot_df = downsample_for_plot(df_ind[['Date','Close','BB_MA','BB_UPPER','BB_LOWER','VWAP']].dropna())
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['Close'], name='Close', mode='lines'))
+        if 'BB_MA' in plot_df.columns:
+            fig.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['BB_MA'], name='BB_MA', mode='lines', line=dict(dash='dash')))
+            fig.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['BB_UPPER'], name='BB_UPPER', mode='lines', opacity=0.6))
+            fig.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['BB_LOWER'], name='BB_LOWER', mode='lines', opacity=0.6))
+        if 'VWAP' in plot_df.columns:
+            fig.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['VWAP'], name='VWAP', mode='lines', line=dict(dash='dot')))
+        fig.update_layout(title=f"{ticker} Price with Bollinger Bands & VWAP", xaxis_title="Date", yaxis_title=f"Price ({currency_symbol})", template='plotly_white')
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Returns distribution (matplotlib histogram is lightweight)
+        st.markdown("**Returns Distribution**")
+        r = df_ind['ret'].dropna()
+        if not r.empty:
+            fig_hist = plt.figure(figsize=(6,3))
+            plt.hist(r, bins=50)
+            plt.title('Returns Distribution')
+            st.pyplot(fig_hist)
+        else:
+            st.info("Not enough returns data for distribution")
+
+        # Volatility clustering metric
+        clust = vol_clustering_score(df_ind, lag=1)
+        st.metric("Volatility clustering (lag=1)", f"{clust:.3f}" if pd.notna(clust) else "—")
+
+    # -------------------- TAB 2: Single-day Predictions --------------------
+    with tab2:
+        st.subheader("Single-day Prediction (Random Forest)")
+        # For speed, optionally restrict to last N days when quick_mode
+        df_for_model = df_ind.copy()
+        if quick_mode:
+            last_n = min(len(df_for_model), 450)  # limit to last ~450 days
+            df_for_model = df_for_model.tail(last_n).reset_index(drop=True)
+
+        model, scaler, metrics, fi = None, None, None, None
+        with st.spinner("🧠 Training Random Forest (cached when possible)..."):
             try:
-                current_price_val = float(df['Close'].iloc[-1])
-            except Exception:
-                current_price_val = None
+                model, scaler, metrics, fi = train_model_rf(df_for_model, test_ratio=0.2, n_estimators=100, max_depth=12)
+            except Exception as e:
+                st.error(f"Model training failed: {e}")
+
+        if model is None:
+            st.error("Model training failed. Try toggling Quick Mode or use a smaller period.")
         else:
-            current_price_val = None
-
-        # ---------------------------
-        # Robust volatility calculation (compute once)
-        # ---------------------------
-        volatility = None
-        is_intraday = False
-        try:
-            if df is not None and 'Date' in df.columns and not df['Date'].empty:
-                # detect intraday by seeing if time component is non-zero anywhere
-                hours = df['Date'].dt.hour
-                minutes = df['Date'].dt.minute
-                if (hours.max() != 0) or (minutes.max() != 0):
-                    is_intraday = True
-        except Exception:
-            is_intraday = False
-
-        try:
-            if df is not None and 'Close' in df.columns and len(df) > 2:
-                returns = df['Close'].pct_change().dropna()
-                if not returns.empty:
-                    if is_intraday:
-                        # intraday volatility (no annualization)
-                        volatility = returns.std()
-                    else:
-                        # daily data -> annualize using sqrt(252)
-                        volatility = returns.std() * (252 ** 0.5)
-        except Exception:
-            volatility = None
-
-        # ---------------------------
-        # UI Tabs - Tab1 (Stock Analysis)
-        # ---------------------------
-        with tab1:
-            # Stock information
-            st.markdown(f"### 📋 {stock_info['name']} ({ticker})")
-            
-            # Data source indicator
-            if data_source != 'sample_data':
-                st.info(f"📡 Data Source: {data_source.title()}")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                cp = current_price_val
-                try:
-                    if cp is not None and not pd.isna(cp):
-                        st.metric("Current Price", f"{currency_symbol}{float(cp):.2f}")
-                    else:
-                        st.metric("Current Price", "Data not available")
-                except (ValueError, TypeError):
-                    st.metric("Current Price", "Data not available")
-            
-            with col2:
-                price_change = 0.0
-                pct_change = 0.0
-                if df is not None and len(df) > 1:
-                    try:
-                        prev_close = float(df['Close'].iloc[-2])
-                        last_close = float(df['Close'].iloc[-1])
-                        price_change = last_close - prev_close
-                        pct_change = (price_change / prev_close) * 100 if prev_close != 0 else 0.0
-                    except Exception:
-                        price_change, pct_change = 0.0, 0.0
-                st.metric("Price Change", f"{currency_symbol}{price_change:.2f}", f"{pct_change:.2f}%")
-            
-            with col3:
-                volume = None
-                if df is not None and 'Volume' in df.columns and len(df) > 0:
-                    try:
-                        volume = int(float(df['Volume'].iloc[-1]))
-                    except (ValueError, TypeError):
-                        volume = None
-
-                if volume is not None:
-                    st.metric("Volume", f"{volume:,.0f}")
+            # Display test r2, RMSE, MAE
+            st.metric("Test R²", f"{metrics['test_r2']:.3f}")
+            st.metric("Test RMSE", f"{metrics['test_rmse']:.3f}")
+            st.metric("Test MAE", f"{metrics['test_mae']:.3f}")
+            # Predict next day
+            next_pred = predict_next_day_from_rf(model, scaler, df_for_model)
+            if next_pred is not None:
+                last_close = float(df_for_model['Close'].iloc[-1])
+                diff = next_pred - last_close
+                pct = (diff / last_close) * 100 if last_close != 0 else 0.0
+                st.metric("Current Price", f"{currency_symbol}{last_close:.2f}")
+                st.metric("Predicted Next Close", f"{currency_symbol}{next_pred:.2f}", f"{pct:.2f}%")
+                # Simple signal
+                if pct > 2:
+                    st.success("🟢 Strong Bullish Signal")
+                elif pct > 0:
+                    st.info("🔵 Mild Bullish")
+                elif pct > -2:
+                    st.warning("🟡 Neutral")
                 else:
-                    st.metric("Volume", "Data not available")
-            
-            with col4:
+                    st.error("🔴 Bearish")
+
+    # -------------------- TAB 3: Charts --------------------
+    with tab3:
+        st.subheader("Charts & Indicators")
+        # Price + MA chart
+        plot_df = downsample_for_plot(df_ind[['Date','Close','MA_20','MA_50']].dropna())
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['Close'], name='Close'))
+        if 'MA_20' in plot_df.columns: fig2.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['MA_20'], name='MA_20', line=dict(dash='dash')))
+        if 'MA_50' in plot_df.columns: fig2.add_trace(go.Scatter(x=plot_df['Date'], y=plot_df['MA_50'], name='MA_50', line=dict(dash='dot')))
+        fig2.update_layout(title="Price with Moving Averages", xaxis_title="Date", yaxis_title=f"Price ({currency_symbol})", template='plotly_white')
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # MACD
+        if 'MACD' in df_ind.columns:
+            fig_macd = go.Figure()
+            df_macd = downsample_for_plot(df_ind[['Date','MACD','MACD_SIGNAL']].dropna())
+            fig_macd.add_trace(go.Scatter(x=df_macd['Date'], y=df_macd['MACD'], name='MACD'))
+            fig_macd.add_trace(go.Scatter(x=df_macd['Date'], y=df_macd['MACD_SIGNAL'], name='Signal'))
+            fig_macd.update_layout(title="MACD", template='plotly_white')
+            st.plotly_chart(fig_macd, use_container_width=True)
+
+        # RSI
+        if 'RSI' in df_ind.columns:
+            df_rsi = downsample_for_plot(df_ind[['Date','RSI']].dropna())
+            fig_rsi = go.Figure()
+            fig_rsi.add_trace(go.Scatter(x=df_rsi['Date'], y=df_rsi['RSI'], name='RSI'))
+            fig_rsi.update_yaxes(range=[0,100])
+            fig_rsi.update_layout(title="RSI", template='plotly_white')
+            st.plotly_chart(fig_rsi, use_container_width=True)
+
+    # -------------------- TAB 4: Modeling (multi-model forecasts) --------------------
+    with tab4:
+        st.subheader("Train Multiple Models & Compare")
+        cols = st.columns(3)
+        with cols[0]:
+            n_days = st.slider("Forecast horizon (days)", 1, 30, 7)
+        with cols[1]:
+            lookback = st.slider("Lookback (lag days)", 10, 60, 30)
+        with cols[2]:
+            test_split_choice = st.selectbox("Test split", ["10%","20%","30%"], index=1)
+        test_ratio = {"10%":0.1,"20%":0.2,"30%":0.3}[test_split_choice]
+        model_choices = st.multiselect("Models to run", options=["Random Forest"] + (["Prophet"] if PROPHET_AVAILABLE else []) + (["LSTM"] if KERAS_AVAILABLE else []), default=["Random Forest"])
+
+        if st.button("Run Models"):
+            st.info("Training selected models. This may take some time (cached when possible).")
+            leaderboard = []
+            forecasts = {}
+            future_dates = None
+
+            # For speed, optionally restrict training set in quick_mode
+            df_models = df_ind.copy()
+            if quick_mode:
+                df_models = df_models.tail(min(len(df_models), 600)).reset_index(drop=True)
+
+            if "Random Forest" in model_choices:
+                try:
+                    rf_model, rf_scaler, rf_metrics, rf_fi = train_model_rf(df_models, test_ratio=test_ratio, n_estimators=150, max_depth=12)
+                    leaderboard.append({"Model":"RandomForest", **{k:v for k,v in rf_metrics.items() if isinstance(v,(int,float))}})
+                    rf_preds = []
+                    # Rolling forecast using last lookback days (simple)
+                    hist = df_models['Close'].astype(float).values.tolist()
+                    for _ in range(n_days):
+                        # prepare last 'lookback' features (if prepared features available)
+                        # simplify: use lag-based RF training not exact feature mapping, so skip complex mapping and use predictor on prepared features
+                        # Instead, use the predict_next_day_from_rf iteratively
+                        pred = predict_next_day_from_rf(rf_model, rf_scaler, df_models)
+                        rf_preds.append(pred)
+                        # append predicted close as new row (simple synthetic append)
+                        # build minimal new row required (fill missing with previous values)
+                        new_row = df_models.iloc[-1].copy()
+                        new_row['Date'] = new_row['Date'] + pd.Timedelta(days=1)
+                        new_row['Close'] = pred
+                        new_row['Open'] = pred
+                        new_row['High'] = pred
+                        new_row['Low'] = pred
+                        new_row['Volume'] = new_row.get('Volume', 100000)
+                        df_models = pd.concat([df_models, new_row.to_frame().T], ignore_index=True)
+                    forecasts['RandomForest'] = rf_preds
+                except Exception as e:
+                    st.error(f"Random Forest failed: {e}")
+
+            if "Prophet" in model_choices and PROPHET_AVAILABLE:
+                try:
+                    # Prophet training (lightweight)
+                    dfp = df_ind[['Date','Close']].rename(columns={'Date':'ds','Close':'y'}).copy()
+                    # limit for speed
+                    if quick_mode:
+                        dfp = dfp.tail(min(len(dfp), 800))
+                    m = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=True)
+                    m.fit(dfp)
+                    future = m.make_future_dataframe(periods=n_days)
+                    fcst = m.predict(future)
+                    preds = fcst['yhat'].tail(n_days).astype(float).tolist()
+                    forecasts['Prophet'] = preds
+                except Exception as e:
+                    st.error(f"Prophet failed: {e}")
+
+            if "LSTM" in model_choices and KERAS_AVAILABLE:
+                st.warning("LSTM training can be slow in CPU environments. Consider Quick Mode or disabling LSTM.")
+                try:
+                    # Use the LSTM training block from prior file but keep small epochs when quick_mode
+                    series = df_ind['Close'].astype(float).values.reshape(-1,1)
+                    ms = MinMaxScaler()
+                    series_scaled = ms.fit_transform(series)
+                    look = lookback
+                    Xs, ys = [], []
+                    for i in range(look, len(series_scaled)):
+                        Xs.append(series_scaled[i-look:i])
+                        ys.append(series_scaled[i])
+                    Xs = np.array(Xs)
+                    ys = np.array(ys)
+                    # split
+                    split_idx = int(len(Xs) * (1 - test_ratio))
+                    X_train, X_test = Xs[:split_idx], Xs[split_idx:]
+                    y_train, y_test = ys[:split_idx], ys[split_idx:]
+                    epochs = 5 if quick_mode else 20
+                    batch = 32
+                    model_l = keras.Sequential([
+                        layers.Input(shape=(look,1)),
+                        layers.LSTM(32, return_sequences=False),
+                        layers.Dense(16, activation='relu'),
+                        layers.Dense(1)
+                    ])
+                    model_l.compile(optimizer='adam', loss='mse')
+                    model_l.fit(X_train, y_train, epochs=epochs, batch_size=batch, verbose=0)
+                    # forecast n_days by rolling
+                    preds = []
+                    hist_scaled = series_scaled.copy()
+                    for _ in range(n_days):
+                        window = hist_scaled[-look:].reshape(1,look,1)
+                        next_scaled = model_l.predict(window, verbose=0)[0]
+                        next_val = float(ms.inverse_transform(next_scaled.reshape(-1,1))[0,0])
+                        preds.append(next_val)
+                        hist_scaled = np.vstack([hist_scaled, next_scaled.reshape(1,1)])
+                    forecasts['LSTM'] = preds
+                except Exception as e:
+                    st.error(f"LSTM failed: {e}")
+
+            # Show leaderboard & forecasts
+            if leaderboard:
+                lb_df = pd.DataFrame(leaderboard).sort_values(by='test_mae', ascending=True).reset_index(drop=True)
+                st.markdown("#### Leaderboard")
+                st.dataframe(lb_df, use_container_width=True)
+            if forecasts:
+                # build plot_df
+                last_hist = df_ind[['Date','Close']].tail(180).copy()
+                future_dates = [last_hist['Date'].iloc[-1] + pd.Timedelta(days=i) for i in range(1, n_days+1)]
+                plot_df = last_hist.rename(columns={'Close':'Actual'}).set_index('Date')
+                for mname, preds in forecasts.items():
+                    # create future series
+                    fut = pd.DataFrame({'Date': future_dates, mname: preds})
+                    fut = fut.set_index('Date')
+                    plot_df = pd.concat([plot_df, fut], axis=0)
+                st.line_chart(plot_df)
+
+    # -------------------- TAB 5: Data & Download --------------------
+    with tab5:
+        st.subheader("Historical Data")
+        display_df = df_ind.copy()
+        # show only tail for speed
+        st.dataframe(display_df.tail(100).reset_index(drop=True), use_container_width=True)
+        csv = display_df.to_csv(index=False)
+        st.download_button("📥 Download CSV", data=csv, file_name=f"{ticker}_data_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+
+        # Quick stats
+        st.markdown("### Summary Statistics")
+        cols = st.columns(2)
+        with cols[0]:
+            try:
+                st.write(f"- Highest Price: {currency_symbol}{display_df['High'].max():.2f}")
+                st.write(f"- Lowest Price: {currency_symbol}{display_df['Low'].min():.2f}")
+                st.write(f"- Average Price: {currency_symbol}{display_df['Close'].mean():.2f}")
+            except Exception:
+                st.write("- Price stats: Data not available")
+        with cols[1]:
+            try:
+                st.write(f"- Average Volume: {int(display_df['Volume'].mean()):,}")
+                st.write(f"- Max Volume: {int(display_df['Volume'].max()):,}")
                 if volatility is not None:
-                    try:
-                        if is_intraday:
-                            st.metric("Volatility (intraday σ)", f"{volatility:.4f}")
-                        else:
-                            # show percent for annualized volatility
-                            st.metric("Volatility (annualized %)", f"{volatility*100:.2f}%")
-                    except (ValueError, TypeError):
-                        st.metric("Volatility", "Data not available")
+                    if is_intraday:
+                        st.write(f"- Volatility (intraday σ): {volatility:.4f}")
+                    else:
+                        st.write(f"- Volatility (annualized): {volatility*100:.2f}%")
                 else:
-                    st.metric("Volatility", "Data not available")
-            
-            # Stock details
-            st.markdown("### 📊 Stock Details")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write(f"**Sector:** {stock_info['sector']}")
-                st.write(f"**Industry:** {stock_info['industry']}")
-            
-            with col2:
-                st.write(f"**Market Cap:** {stock_info['market_cap']}")
-                st.write(f"**Currency:** {stock_info['currency']}")
-            
-            # Key Statistics
-            st.markdown("### 📈 Key Statistics")
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                high_52w = None
-                if df is not None and 'High' in df.columns and not df.empty:
-                    try:
-                        high_52w = float(df['High'].max())
-                    except (ValueError, TypeError):
-                        high_52w = None
-                st.metric("52W High", f"{currency_symbol}{high_52w:.2f}" if high_52w is not None else "Data not available")
-            
-            with col2:
-                low_52w = None
-                if df is not None and 'Low' in df.columns and not df.empty:
-                    try:
-                        low_52w = float(df['Low'].min())
-                    except (ValueError, TypeError):
-                        low_52w = None
-                st.metric("52W Low", f"{currency_symbol}{low_52w:.2f}" if low_52w is not None else "Data not available")
-            
-            with col3:
-                avg_volume_val = None
-                if df is not None and 'Volume' in df.columns and not df.empty:
-                    try:
-                        avg_volume_val = float(df['Volume'].mean())
-                    except (ValueError, TypeError):
-                        avg_volume_val = None
-                st.metric("Avg Volume", f"{avg_volume_val:,.0f}" if avg_volume_val is not None else "Data not available")
-            
-            with col4:
-                if 'RSI' in df.columns and not df['RSI'].isna().all():
-                    current_rsi = df['RSI'].iloc[-1]
-                    st.metric("RSI", f"{current_rsi:.1f}")
-        
-        # ---------------------------
-        # Tab2: Predictions (unchanged)
-        # ---------------------------
-        with tab2:
-            # Train model and make predictions
-            st.markdown("### 🤖 AI Predictions")
-            
-            with st.spinner("🧠 Training ML model..."):
-                model, scaler, metrics, feature_importance = train_model(df)
-            
-            if model is None:
-                st.error("Failed to train model. Please try with different parameters.")
-                return
-            
-            # Display model performance
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Model Accuracy (R²)", f"{metrics['test_r2']:.3f}")
-            
-            with col2:
-                st.metric("RMSE", f"{metrics['test_rmse']:.2f}")
-            
-            with col3:
-                st.metric("MAE", f"{metrics['test_mae']:.2f}")
-            
-            # Single day prediction
-            st.markdown("### 🔮 Next Day Prediction")
-            next_day_pred = predict_next_price(model, scaler, df)
-            
-            if next_day_pred is not None:
-                try:
-                    current_price_num = float(df['Close'].iloc[-1])
-                    price_change = float(next_day_pred) - current_price_num
-                    percentage_change = (price_change / current_price_num) * 100 if current_price_num != 0 else 0.0
-                except Exception:
-                    current_price_num, price_change, percentage_change = None, None, None
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("Current Price", f"{currency_symbol}{current_price_num:.2f}" if current_price_num is not None else "—")
-                
-                with col2:
-                    st.metric(
-                        "Predicted Price",
-                        f"{currency_symbol}{float(next_day_pred):.2f}",
-                        f"{currency_symbol}{price_change:.2f}" if price_change is not None else "—"
-                    )
-                
-                with col3:
-                    st.metric("Expected Change", f"{percentage_change:.2f}%" if percentage_change is not None else "—")
-                
-                # Prediction confidence
-                if percentage_change is not None:
-                    if percentage_change > 2:
-                        st.success("🟢 Strong Bullish Signal")
-                    elif percentage_change > 0:
-                        st.info("🔵 Mild Bullish Signal")
-                    elif percentage_change > -2:
-                        st.warning("🟡 Neutral Signal")
-                    else:
-                        st.error("🔴 Bearish Signal")
-        
-        # ---------------------------
-        # Tab3: Charts (unchanged except x-axis handling remains ok)
-        # ---------------------------
-        with tab3:
-            # Charts and visualizations
-            st.markdown("### 📈 Stock Price Charts")
-            
-            # Price chart with moving averages
-            fig = go.Figure()
-            
-            fig.add_trace(go.Scatter(
-                x=df['Date'],
-                y=df['Close'],
-                mode='lines',
-                name='Close Price',
-                line=dict(color='#1f77b4', width=3)
-            ))
-            
-            if 'MA_20' in df.columns and not df['MA_20'].isna().all():
-                fig.add_trace(go.Scatter(
-                    x=df['Date'],
-                    y=df['MA_20'],
-                    mode='lines',
-                    name='20-Day MA',
-                    line=dict(color='#ff7f0e', width=2, dash='dash')
-                ))
-            
-            if 'MA_50' in df.columns and not df['MA_50'].isna().all():
-                fig.add_trace(go.Scatter(
-                    x=df['Date'],
-                    y=df['MA_50'],
-                    mode='lines',
-                    name='50-Day MA',
-                    line=dict(color='#2ca02c', width=2, dash='dot')
-                ))
-            
-            fig.update_layout(
-                title=f"{ticker} Stock Price with Moving Averages",
-                xaxis_title="Date",
-                yaxis_title=f"Price ({currency_symbol})",
-                hovermode='x unified',
-                template='plotly_white'
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Volume chart
-            fig_volume = go.Figure()
-            fig_volume.add_trace(go.Bar(
-                x=df['Date'],
-                y=df['Volume'],
-                name='Volume',
-                marker_color='rgba(31, 119, 180, 0.6)'
-            ))
-            
-            fig_volume.update_layout(
-                title=f"{ticker} Trading Volume",
-                xaxis_title="Date",
-                yaxis_title="Volume",
-                template='plotly_white'
-            )
-            
-            st.plotly_chart(fig_volume, use_container_width=True)
-            
-            # RSI chart
-            if 'RSI' in df.columns and not df['RSI'].isna().all():
-                fig_rsi = go.Figure()
-                fig_rsi.add_trace(go.Scatter(
-                    x=df['Date'],
-                    y=df['RSI'],
-                    mode='lines',
-                    name='RSI',
-                    line=dict(color='#d62728', width=3)
-                ))
-                
-                # Add overbought/oversold lines
-                fig_rsi.add_hline(y=70, line_dash="dash", line_color="#ff7f0e", annotation_text="Overbought (70)")
-                fig_rsi.add_hline(y=30, line_dash="dash", line_color="#2ca02c", annotation_text="Oversold (30)")
-                
-                fig_rsi.update_layout(
-                    title=f"{ticker} RSI (Relative Strength Index)",
-                    xaxis_title="Date",
-                    yaxis_title="RSI",
-                    yaxis=dict(range=[0, 100]),
-                    template='plotly_white'
-                )
-                
-                st.plotly_chart(fig_rsi, use_container_width=True)
-        
-        # ---------------------------
-        # Tab4: Model Performance (unchanged)
-        # ---------------------------
-        with tab4:
-            # Model performance details
-            if model is not None:
-                st.markdown("### 🤖 Model Performance Details")
-                
-                # Performance metrics
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("**🎯 Training Metrics:**")
-                    st.write(f"- RMSE: {metrics['train_rmse']:.4f}")
-                    st.write(f"- MAE: {metrics['train_mae']:.4f}")
-                    st.write(f"- R² Score: {metrics['train_r2']:.4f}")
-                    st.write(f"- Sample Size: {metrics['train_size']}")
-                
-                with col2:
-                    st.markdown("**📊 Testing Metrics:**")
-                    st.write(f"- RMSE: {metrics['test_rmse']:.4f}")
-                    st.write(f"- MAE: {metrics['test_mae']:.4f}")
-                    st.write(f"- R² Score: {metrics['test_r2']:.4f}")
-                    st.write(f"- Sample Size: {metrics['test_size']}")
-                
-                # Model interpretation
-                st.markdown("### 🎯 Model Interpretation")
-                if metrics['test_r2'] > 0.8:
-                    st.success("🎯 Excellent model performance! High accuracy predictions.")
-                elif metrics['test_r2'] > 0.6:
-                    st.info("👍 Good model performance. Reliable predictions.")
-                elif metrics['test_r2'] > 0.4:
-                    st.warning("⚠️ Moderate model performance. Use predictions with caution.")
-                else:
-                    st.error("❌ Poor model performance. Predictions may be unreliable.")
-                
-                # Feature importance
-                if feature_importance is not None and not feature_importance.empty:
-                    st.markdown("### 🎯 Feature Importance")
-                    
-                    fig_importance = px.bar(
-                        feature_importance.head(10),
-                        x='importance',
-                        y='feature',
-                        orientation='h',
-                        title="Top 10 Most Important Features",
-                        color='importance',
-                        color_continuous_scale='viridis',
-                        template='plotly_white'
-                    )
-                    fig_importance.update_layout(
-                        yaxis={'categoryorder':'total ascending'}
-                    )
-                    st.plotly_chart(fig_importance, use_container_width=True)
-                    
-                    # Feature explanation
-                    st.info("""
-                    **📋 Feature Importance Explanation:**
-                    - **Close_Lag_X**: Previous day closing prices
-                    - **MA_X**: Moving averages (trend indicators)
-                    - **RSI**: Relative Strength Index (momentum indicator)
-                    - **Volume**: Trading volume
-                    - **Price_Change**: Recent price change percentage
-                    """)
-        
-        # ---------------------------
-        # Tab5: Data Table + Data Statistics (REPLACED with safe_stat usage)
-        # ---------------------------
-        with tab5:
-            # Data table
-            st.markdown("### 📋 Historical Data")
-            
-            # Format dataframe for display
-            display_df = df.tail(50).copy()
-            
-            # Format columns for display
-            if 'Date' in display_df.columns:
-                display_df['Date'] = display_df['Date'].dt.strftime('%Y-%m-%d')
-            
-            # Select columns to display
-            display_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
-            if 'MA_20' in display_df.columns:
-                display_columns.append('MA_20')
-            if 'RSI' in display_df.columns:
-                display_columns.append('RSI')
-            
-            display_df = display_df[display_columns]
-            
-            st.dataframe(display_df, use_container_width=True)
-            
-            # Download data
-            csv = df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download Data as CSV",
-                data=csv,
-                file_name=f"{ticker}_stock_data_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                type="primary"
-            )
-            
-            # Data statistics
-            st.markdown("### 📊 Data Statistics")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("**💰 Price Statistics:**")
-                # Highest, Lowest, Average
-                safe_stat(df, "High", np.max, "Highest Price", "{:.2f}", currency_symbol)
-                safe_stat(df, "Low", np.min, "Lowest Price", "{:.2f}", currency_symbol)
-                safe_stat(df, "Close", np.mean, "Average Price", "{:.2f}", currency_symbol)
-                
-                # Price Range
-                try:
-                    if "High" in df.columns and "Low" in df.columns:
-                        high_val = df["High"].max()
-                        low_val = df["Low"].min()
-                        if pd.notna(high_val) and pd.notna(low_val):
-                            price_range = float(high_val) - float(low_val)
-                            st.write(f"- Price Range: {currency_symbol}{price_range:.2f}")
-                        else:
-                            st.write("- Price Range: Data not available")
-                    else:
-                        st.write("- Price Range: Data not available")
-                except Exception:
-                    st.write("- Price Range: Data not available")
-            
-            with col2:
-                st.markdown("**📊 Trading Statistics:**")
-                safe_stat(df, "Volume", np.mean, "Average Volume", "{:,.0f}")
-                safe_stat(df, "Volume", np.max, "Max Volume", "{:,.0f}")
-                
-                # Total Data Points
-                if df is not None and not df.empty:
-                    st.write(f"- Total Data Points: {len(df):,}")
-                else:
-                    st.write("- Total Data Points: Data not available")
-                
-                # Date Range
-                try:
-                    if "Date" in df.columns and not df["Date"].empty:
-                        date_min = df['Date'].min()
-                        date_max = df['Date'].max()
-                        if pd.notna(date_min) and pd.notna(date_max):
-                            st.write(f"- Date Range: {date_min.strftime('%Y-%m-%d')} to {date_max.strftime('%Y-%m-%d')}")
-                        else:
-                            st.write("- Date Range: Data not available")
-                    else:
-                        st.write("- Date Range: Data not available")
-                except Exception:
-                    st.write("- Date Range: Data not available")
-                
-                # Volatility (show in data table area as well)
-                try:
-                    if volatility is not None:
-                        if is_intraday:
-                            st.write(f"- Volatility (intraday σ): {volatility:.4f}")
-                        else:
-                            st.write(f"- Volatility (annualized): {volatility*100:.2f}%")
-                    else:
-                        st.write("- Volatility: Data not available")
-                except Exception:
                     st.write("- Volatility: Data not available")
-        
-        # Warning disclaimer
+            except Exception:
+                st.write("- Volume stats: Data not available")
+
+    # Warning disclaimer
         st.markdown("""
         <div class="warning-card">
             <strong>⚠️ Important Disclaimer:</strong><br>
@@ -1362,6 +890,6 @@ def main():
             unsafe_allow_html=True
 )
 
+
 if __name__ == "__main__":
     main()
-
