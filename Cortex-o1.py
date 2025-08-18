@@ -126,6 +126,22 @@ st.markdown("""
         section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {
             color: #000000 !important;
         }
+        /* Force selectbox to have white background */
+        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        /* Dropdown menu background */
+        section[data-testid="stSidebar"] ul {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        section[data-testid="stSidebar"] ul li {
+            color: #000000 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
