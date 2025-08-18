@@ -7,4 +7,6 @@ seaborn
 requests
 scikit-learn
 yfinance
-
+statsmodels
+prophet
+tensorflow
