@@ -658,7 +658,7 @@ def main():
 
     # -------------------- TAB 1: Analysis --------------------
     with tab1:
-        st.subheader(f"Market Analysis — {stock_info['name']} ({ticker})")
+        st.subheader(f"Market Analysis — {stock_info.get(ticker.split('.')[0], {}).get('name', ticker)} ({ticker})")
         sr = sharpe_ratio(df_ind)
         dd, max_dd, ann_ret, calmar = drawdown_stats(df_ind)
         st.metric("Sharpe", f"{sr:.2f}" if pd.notna(sr) else "—")
@@ -948,3 +948,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
