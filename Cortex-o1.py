@@ -304,9 +304,6 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         if 'Close' not in df.columns and 'Adj Close' in df.columns:
             df['Close'] = df['Adj Close']
 
-        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
-        df = df.dropna(subset=['Close'])
-
         df = df[['Date','Open','High','Low','Close','Volume']]
         df['Date'] = pd.to_datetime(df['Date'])
         df.attrs = {'source':'yfinance','ticker':ticker_mapped}
