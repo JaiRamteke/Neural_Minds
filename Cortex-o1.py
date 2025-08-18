@@ -672,12 +672,32 @@ def main():
     # -------------------- TAB 1: Analysis --------------------
     with tab1:
         st.subheader(f"Market Analysis — {stock_info.get(ticker.split('.')[0], {}).get('name', ticker)} ({ticker})")
-        sr = sharpe_ratio(df_ind)
-        dd, max_dd, ann_ret, calmar = drawdown_stats(df_ind)
+
+        # Initialize defaults
+        sr, max_dd, ann_ret, calmar, clust = (np.nan, np.nan, np.nan, np.nan, np.nan)
+
+        # Compute safely
+        try:
+            sr = sharpe_ratio(df_ind)
+        except Exception:
+            pass
+
+        try:
+            dd, max_dd, ann_ret, calmar = drawdown_stats(df_ind)
+        except Exception:
+            pass
+
+        try:
+            clust = vol_clustering_score(df_ind, lag=1)
+        except Exception:
+            pass
+
+        # Display metrics
         st.metric("Sharpe", safe_number(sr, precision=":.2f"))
         st.metric("Max Drawdown", safe_number(max_dd, precision=":.2f", percent=True))
         st.metric("Annualized Return", safe_number(ann_ret, precision=":.2f", percent=True))
         st.metric("Volatility clustering (lag=1)", safe_number(clust, precision=":.3f"))
+
 
         # Show bollinger + vwap chart (downsample for speed)
         plot_df = downsample_for_plot(df_ind[['Date','Close','BB_MA','BB_UPPER','BB_LOWER','VWAP']].dropna())
@@ -727,9 +747,10 @@ def main():
             st.error("Model training failed. Try toggling Quick Mode or use a smaller period.")
         else:
             # Display test r2, RMSE, MAE
-            st.metric("Test R²", safe_number(metrics['test_r2'], precision=":.3f"))
-            st.metric("Test RMSE", safe_number(metrics['test_rmse'], precision=":.3f"))
-            st.metric("Test MAE", safe_number(metrics['test_mae'], precision=":.3f"))
+            st.metric("Test R²", safe_number(metrics.get('test_r2', np.nan), precision=":.3f"))
+            st.metric("Test RMSE", safe_number(metrics.get('test_rmse', np.nan), precision=":.3f"))
+            st.metric("Test MAE", safe_number(metrics.get('test_mae', np.nan), precision=":.3f"))
+
             # Predict next day
             next_pred = predict_next_day_from_rf(model, scaler, df_for_model)
             if next_pred is not None:
