@@ -893,6 +893,7 @@ def main():
         # ---------------------------
         # --- Volatility calculation (safe version) ---
         volatility = None
+        is_intraday = False
 
         if df is not None and 'Close' in df.columns:
             valid_closes = df['Close'].dropna()
@@ -1442,5 +1443,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
