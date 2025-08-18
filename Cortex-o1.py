@@ -297,6 +297,9 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
 
         df.reset_index(inplace=True)
 
+        # Ensure Date is datetime
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+
         # Ensure 'Close' exists even if only 'Adj Close' was returned
         if 'Close' not in df.columns and 'Adj Close' in df.columns:
             df['Close'] = df['Adj Close']
@@ -890,28 +893,25 @@ def main():
         # ---------------------------
         volatility = None
         is_intraday = False
-        try:
-            if df is not None and 'Date' in df.columns and not df['Date'].empty:
-                # detect intraday by seeing if time component is non-zero anywhere
-                hours = df['Date'].dt.hour
-                minutes = df['Date'].dt.minute
-                if (hours.max() != 0) or (minutes.max() != 0):
-                    is_intraday = True
-        except Exception:
-            is_intraday = False
+        if df is not None and 'Date' in df.columns and pd.api.types.is_datetime64_any_dtype(df['Date']):
+            # detect intraday if any nonzero hour/minute
+            if (df['Date'].dt.hour.max() != 0) or (df['Date'].dt.minute.max() != 0):
+                is_intraday = True
 
-        try:
-            if df is not None and 'Close' in df.columns and len(df) > 2:
-                returns = df['Close'].pct_change().dropna()
-                if not returns.empty:
-                    if is_intraday:
-                        # intraday volatility (no annualization)
-                        volatility = returns.std()
-                    else:
-                        # daily data -> annualize using sqrt(252)
-                        volatility = returns.std() * (252 ** 0.5)
-        except Exception:
-            volatility = None
+        if df is not None and 'Close' in df.columns and df['Close'].notna().sum() > 2:
+            returns = df['Close'].pct_change().dropna()
+            if not returns.empty:
+                if is_intraday:
+                    volatility = returns.std()
+                else:
+                    volatility = returns.std() * (252 ** 0.5)
+
+        # Debugging: show what’s wrong
+        if volatility is None:
+            st.warning(f"⚠️ Volatility could not be computed. "
+                    f"Close exists? { 'Close' in df.columns }, "
+                    f"rows: { len(df) if df is not None else 0 }, "
+                    f"valid closes: { df['Close'].notna().sum() if 'Close' in df.columns else 0 }")
 
         # ---------------------------
         # UI Tabs - Tab1 (Stock Analysis)
