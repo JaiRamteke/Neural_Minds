@@ -527,11 +527,10 @@ def main():
                 else:
                     st.info("🇺🇸 US stock format detected")
         
-        st.sidebar.markdown("### 🤖 Select Models for Forecasting")
-
-        model_choices = st.selectbox(
+        model_choice = st.sidebar.selectbox(
+            "Choose a forecasting model:",
             ["Prophet", "LSTM", "Random Forest"],
-            default=[2]  # or [] if you want none pre-selected
+            index=2  # default is Prophet
         )
 
         quick_mode = st.sidebar.checkbox("⚡ Quick Mode (faster, less accurate)", value=False)
