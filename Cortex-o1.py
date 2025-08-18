@@ -529,11 +529,12 @@ def main():
         
         st.sidebar.markdown("### 🤖 Select Models for Forecasting")
 
-        model_choices = st.sidebar.multiselect(
-            "Choose one or more models:",
-            ["ARIMA", "Prophet", "LSTM", "Random Forest", "XGBoost"],
-            default=["ARIMA"]  # or [] if you want none pre-selected
+        model_choices = st.selectbox(
+            ["Prophet", "LSTM", "Random Forest"],
+            default=[2]  # or [] if you want none pre-selected
         )
+
+        quick_mode = st.sidebar.checkbox("⚡ Quick Mode (faster, less accurate)", value=False)
 
         # Time period selection
         st.markdown("#### 📅 Time Period")
