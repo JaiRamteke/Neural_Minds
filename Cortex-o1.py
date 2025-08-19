@@ -844,52 +844,93 @@ def predict_prophet_next(m):
 # --------------------------
 
 # ---- LSTM ADDITION ----
+# ---- LSTM (robust) ----
 def prepare_lstm_data(df, sequence_length=10):
     from sklearn.preprocessing import MinMaxScaler
-    close_prices = df['Close'].values.reshape(-1,1)
+    # Force numeric, drop NaNs, and cast to float32 for Keras
+    close = pd.to_numeric(df['Close'], errors='coerce').dropna().values.reshape(-1, 1).astype(np.float32)
+
     scaler = MinMaxScaler()
-    scaled = scaler.fit_transform(close_prices)
+    scaled = scaler.fit_transform(close)
+
     X, y = [], []
-    for i in range(len(scaled)-sequence_length):
-        X.append(scaled[i:i+sequence_length, 0])
-        y.append(scaled[i+sequence_length, 0])
-    X, y = np.array(X), np.array(y)
-    X = X.reshape((X.shape[0], X.shape[1], 1))
+    for i in range(len(scaled) - sequence_length):
+        X.append(scaled[i:i + sequence_length, 0])
+        y.append(scaled[i + sequence_length, 0])
+
+    # Fixed shapes + dtypes that Keras likes
+    X = np.array(X, dtype=np.float32).reshape(-1, sequence_length, 1)
+    y = np.array(y, dtype=np.float32)
     return X, y, scaler
 
 def train_lstm(df):
     sequence_length = 10
     X, y, scaler = prepare_lstm_data(df, sequence_length)
-    split_idx = int(len(X)*0.8)
+
+    # Not enough sequences? Skip LSTM gracefully (do NOT crash app)
+    if len(X) < 30:
+        st.warning("LSTM skipped: not enough sequences for training.")
+        metrics = {
+            'train_rmse': np.nan, 'test_rmse': np.nan,
+            'train_mae': np.nan,  'test_mae': np.nan,
+            'train_r2': np.nan,   'test_r2': np.nan,
+            'train_size': 0,      'test_size': 0
+        }
+        return None, None, metrics, None, None, sequence_length
+
+    # Time-ordered split
+    split_idx = int(len(X) * 0.8)
     X_train, X_test = X[:split_idx], X[split_idx:]
     y_train, y_test = y[:split_idx], y[split_idx:]
+
+    # Build model
     model = Sequential()
-    model.add(LSTM(50, input_shape=(X.shape[1],1)))
+    model.add(LSTM(50, input_shape=(sequence_length, 1)))
     model.add(Dense(1))
     model.compile(optimizer=Adam(0.001), loss='mse')
     early_stop = EarlyStopping(patience=5, restore_best_weights=True)
-    model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.1, callbacks=[early_stop], verbose=0)
-    y_pred = model.predict(X_test).flatten()
-    y_pred_inv = scaler.inverse_transform(y_pred.reshape(-1,1)).flatten()
-    y_test_inv = scaler.inverse_transform(y_test.reshape(-1,1)).flatten()
+
+    # Explicit validation set (avoids Keras validation_split edge cases)
+    val_len = max(1, len(X_train) // 10)
+    X_tr, X_val = X_train[:-val_len], X_train[-val_len:]
+    y_tr, y_val = y_train[:-val_len], y_train[-val_len:]
+
+    try:
+        model.fit(
+            X_tr, y_tr,
+            epochs=50, batch_size=32,
+            validation_data=(X_val, y_val),
+            callbacks=[early_stop],
+            verbose=0
+        )
+    except Exception as e:
+        # Never crash the app; surface in UI and continue
+        st.warning(f"LSTM training failed and will be skipped this run: {e}")
+        metrics = {
+            'train_rmse': np.nan, 'test_rmse': np.nan,
+            'train_mae': np.nan,  'test_mae': np.nan,
+            'train_r2': np.nan,   'test_r2': np.nan,
+            'train_size': int(X_tr.shape[0]),
+            'test_size': int(X_test.shape[0])
+        }
+        return None, None, metrics, None, None, sequence_length
+
+    # Evaluate
+    y_pred = model.predict(X_test, verbose=0).flatten()
+    y_pred_inv = scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
+    y_test_inv = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+
     metrics = {
-        'train_rmse': None,
-        'test_rmse': np.sqrt(mean_squared_error(y_test_inv, y_pred_inv)),
-        'train_mae': None,
-        'test_mae': mean_absolute_error(y_test_inv, y_pred_inv),
-        'train_r2': None,
-        'test_r2': r2_score(y_test_inv, y_pred_inv),
-        'train_size': X_train.shape[0],
-        'test_size': X_test.shape
+        'train_rmse': np.nan,
+        'test_rmse': float(np.sqrt(mean_squared_error(y_test_inv, y_pred_inv))),
+        'train_mae': np.nan,
+        'test_mae': float(mean_absolute_error(y_test_inv, y_pred_inv)),
+        'train_r2': np.nan,
+        'test_r2': float(r2_score(y_test_inv, y_pred_inv)),
+        'train_size': int(X_tr.shape[0]),
+        'test_size': int(X_test.shape[0])
     }
     return model, scaler, metrics, y_pred_inv, y_test_inv, sequence_length
-
-def predict_lstm_next(model, scaler, df, sequence_length):
-    X, _, _ = prepare_lstm_data(df, sequence_length)
-    last_X = X[-1:]
-    pred_scaled = model.predict(last_X)
-    pred = scaler.inverse_transform(pred_scaled.reshape(-1,1)).flatten()
-    return pred
 # -----------------------
 
 model_metrics_leaderboard = {}
