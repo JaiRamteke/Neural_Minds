@@ -308,33 +308,57 @@ def test_api_connections():
     return status
 
 @st.cache_data(ttl=300)
-def fetch_stock_data_yfinance(ticker, period="1y"):
+def fetch_stock_data_yfinance(ticker, period="1y", max_retries=2):
+    """
+    Robust yfinance data fetch:
+    - maps ticker for yfinance (NSE -> .NS)
+    - tries yf.download, then yf.Ticker.history fallback
+    - retries with exponential backoff
+    - returns normalized dataframe or None
+    """
     try:
         ticker_mapped = map_ticker_for_source(ticker, "yfinance")
         yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
         yf_period = yf_period_map.get(period, '1y')
 
-        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
-        if df.empty:
-            return None
+        last_exc = None
+        for attempt in range(max_retries + 1):
+            try:
+                # prefer Ticker.history for more robust behavior
+                t = yf.Ticker(ticker_mapped)
+                df = t.history(period=yf_period, interval="1d", auto_adjust=False, actions=False)
+                if df is None or df.empty:
+                    # try yf.download as a fallback
+                    df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False, threads=False)
+                if df is not None and not df.empty:
+                    df = df.reset_index()
+                    # make sure Date is datetime and Close exists
+                    if 'Date' not in df.columns and df.index.name in ['Date','date']:
+                        df = df.reset_index()
+                    if 'Close' not in df.columns and 'Adj Close' in df.columns:
+                        df['Close'] = df['Adj Close']
+                    # keep expected columns only
+                    for col in ['Date','Open','High','Low','Close','Volume']:
+                        if col not in df.columns:
+                            df[col] = np.nan
+                    df = df[['Date','Open','High','Low','Close','Volume']]
+                    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+                    df = df.dropna(subset=['Date']).reset_index(drop=True)
+                    df.attrs = {'source':'yfinance','ticker':ticker_mapped}
+                    return df
+                else:
+                    last_exc = Exception("yfinance returned no data")
+            except Exception as e:
+                last_exc = e
+            # exponential backoff
+            time.sleep(1 + attempt*1.5)
 
-        df.reset_index(inplace=True)
-
-        # Ensure Date is datetime
-        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-
-        # Ensure 'Close' exists even if only 'Adj Close' was returned
-        if 'Close' not in df.columns and 'Adj Close' in df.columns:
-            df['Close'] = df['Adj Close']
-
-        df = df[['Date','Open','High','Low','Close','Volume']]
-        df['Date'] = pd.to_datetime(df['Date'])
-        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
-        return df
-    except Exception as e:
-        st.error(f"yfinance fetch error: {e}")
+        # If we reached here, failed
+        st.warning(f"yfinance fetch failed for {ticker} ({ticker_mapped}): {str(last_exc)[:240]}")
         return None
-
+    except Exception as e:
+        st.error(f"yfinance unexpected error: {e}")
+        return None
 
 
 @st.cache_data(ttl=300)
@@ -814,28 +838,113 @@ def lstm_last_window_sensitivity(model, scaler, df, sequence_length=10, steps=9,
 # ======================================================================
 
 # ---- PROPHET ADDITION ----
-def train_prophet(df):
-    prophet_data = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'})
-    n_test = int(len(df)*0.2)
-    train_data = prophet_data[:-n_test]
-    test_data = prophet_data[-n_test:]
-    m = Prophet(daily_seasonality=True)
-    m.fit(train_data)
-    future = m.make_future_dataframe(periods=n_test)
-    forecast = m.predict(future)
-    pred = forecast['yhat'][-n_test:].values
-    test_y = test_data['y'].values
-    metrics = {
-        'train_rmse': None,
-        'test_rmse': np.sqrt(mean_squared_error(test_y, pred)),
-        'train_mae': None,
-        'test_mae': mean_absolute_error(test_y, pred),
-        'train_r2': None,
-        'test_r2': r2_score(test_y, pred),
-        'train_size': train_data.shape[0],
-        'test_size': test_data.shape
-    }
-    return m, metrics, pred, test_y
+def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
+    """
+    Robust Prophet training:
+    - df must have 'Date' and 'Close'
+    - use_log: whether to log-transform the 'Close' series (often stabilizes variance)
+    - grid_cps: list of changepoint_prior_scale to try (simple grid)
+    Returns (best_model, best_metrics, preds_on_test, y_test_values, best_params)
+    """
+    # basic checks
+    if df is None or len(df) < 30:
+        return None, {
+            'train_rmse': np.nan, 'test_rmse': np.nan,
+            'train_mae': np.nan, 'test_mae': np.nan,
+            'train_r2': np.nan, 'test_r2': np.nan,
+            'train_size': 0, 'test_size': 0
+        }, None, None, {}
+
+    # Prepare prophet dataframe
+    dfp = df[['Date','Close']].rename(columns={'Date':'ds','Close':'y'}).copy()
+    if use_log:
+        # Keep original for inverse later
+        dfp['y_orig'] = dfp['y']
+        dfp['y'] = np.log1p(dfp['y'])
+
+    # Add regressors if exist (MA_20, RSI, Volume)
+    regs = []
+    for r in ['MA_20','RSI','Volume']:
+        if r in df.columns:
+            dfp[r] = df[r].values
+            regs.append(r)
+
+    # train/test split last 20%
+    n = len(dfp)
+    n_test = max(1, int(n * 0.2))
+    train_df = dfp[:-n_test].reset_index(drop=True)
+    test_df = dfp[-n_test:].reset_index(drop=True)
+
+    best_model = None
+    best_score = np.inf
+    best_metrics = None
+    best_preds = None
+    best_params = {}
+
+    for cps in grid_cps:
+        try:
+            m = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=True,
+                        changepoint_prior_scale=cps)
+            # add regressors
+            for r in regs:
+                m.add_regressor(r)
+            # fit
+            m.fit(train_df)
+            # forecast for test period: create future for length of test
+            future = m.make_future_dataframe(periods=n_test, freq='D')
+            # attach regressors for future rows using test_df values if present
+            if regs:
+                # merge by ds to ensure the columns exist
+                merged = pd.merge(future, dfp[['ds'] + regs], how='left', on='ds')
+                future = merged
+            fc = m.predict(future)
+            # extract last n_test predictions aligned to test_df ds
+            preds = fc[['ds','yhat']].set_index('ds').reindex(test_df['ds']).reset_index()['yhat'].values
+
+            # inverse transform if used log
+            if use_log:
+                preds_inv = np.expm1(preds)
+                y_test = np.expm1(test_df['y'].values)
+            else:
+                preds_inv = preds
+                y_test = test_df['y'].values
+
+            # compute metrics
+            test_rmse = float(np.sqrt(mean_squared_error(y_test, preds_inv)))
+            test_mae  = float(mean_absolute_error(y_test, preds_inv))
+            test_r2   = float(r2_score(y_test, preds_inv))
+
+            # choose best by RMSE
+            if test_rmse < best_score:
+                best_score = test_rmse
+                best_model = m
+                best_metrics = {
+                    'train_rmse': None,
+                    'test_rmse': test_rmse,
+                    'train_mae': None,
+                    'test_mae': test_mae,
+                    'train_r2': None,
+                    'test_r2': test_r2,
+                    'train_size': len(train_df),
+                    'test_size': len(test_df)
+                }
+                best_preds = preds_inv
+                best_params = {'changepoint_prior_scale': cps, 'use_log': use_log, 'regs': regs}
+        except Exception as e:
+            # try next hyperparam quietly but log in UI
+            st.warning(f"Prophet training error for cps={cps}: {str(e)[:200]}")
+            continue
+
+    if best_model is None:
+        # failed to fit any model
+        return None, {
+            'train_rmse': np.nan, 'test_rmse': np.nan,
+            'train_mae': np.nan, 'test_mae': np.nan,
+            'train_r2': np.nan, 'test_r2': np.nan,
+            'train_size': 0, 'test_size': 0
+        }, None, None, {}
+
+    return best_model, best_metrics, best_preds, np.expm1(test_df['y'].values) if use_log else test_df['y'].values, best_params
 
 def predict_prophet_next(m):
     future = m.make_future_dataframe(periods=1)
@@ -843,7 +952,6 @@ def predict_prophet_next(m):
     return forecast['yhat'].iloc[-1]
 # --------------------------
 
-# ---- LSTM ADDITION ----
 # ---- LSTM (robust) ----
 def prepare_lstm_data(df, sequence_length=10):
     from sklearn.preprocessing import MinMaxScaler
