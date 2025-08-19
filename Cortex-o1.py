@@ -1469,36 +1469,36 @@ def main():
                 except Exception:
                     st.write("- Volatility: Data not available")
             # ============ TAB 6: Leaderboard & Risk (ONLY HERE) ============
-    with tab6:
-        st.header("Model Leaderboard & Risk Metrics")
-        # Optionally allow user to run all models and collect metrics
-        if st.button("Evaluate All Models"):
-            # Run all available models for leaderboard
-            leaderboard_metrics = {}
-            # Random Forest
-            mdl, sclr, met, _ = train_model(df)
-            met["sharpe"] = calculate_sharpe_ratio(df["Close"])
-            leaderboard_metrics["Random Forest"] = met
-            # Prophet
-            if PROPHET_AVAILABLE:
-                m, met, _, _ = train_prophet(df)
+        with tab6:
+            st.header("Model Leaderboard & Risk Metrics")
+            # Optionally allow user to run all models and collect metrics
+            if st.button("Evaluate All Models"):
+                # Run all available models for leaderboard
+                leaderboard_metrics = {}
+                # Random Forest
+                mdl, sclr, met, _ = train_model(df)
                 met["sharpe"] = calculate_sharpe_ratio(df["Close"])
-                leaderboard_metrics["Prophet"] = met
-            # LSTM
-            if LSTM_AVAILABLE:
-                mdl, sclr, met, _, _, seq_len = train_lstm(df)
-                met["sharpe"] = calculate_sharpe_ratio(df["Close"])
-                leaderboard_metrics["LSTM"] = met
-            model_metrics_leaderboard = leaderboard_metrics
+                leaderboard_metrics["Random Forest"] = met
+                # Prophet
+                if PROPHET_AVAILABLE:
+                    m, met, _, _ = train_prophet(df)
+                    met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                    leaderboard_metrics["Prophet"] = met
+                # LSTM
+                if LSTM_AVAILABLE:
+                    mdl, sclr, met, _, _, seq_len = train_lstm(df)
+                    met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                    leaderboard_metrics["LSTM"] = met
+                model_metrics_leaderboard = leaderboard_metrics
 
-        if model_metrics_leaderboard:
-            leaderboard_df = pd.DataFrame(model_metrics_leaderboard).T
-            st.dataframe(
-                leaderboard_df[["test_rmse", "test_mae", "test_r2", "sharpe"]].style.format({
-                    'test_rmse': '{:.2f}', 'test_mae': '{:.2f}', 'test_r2': '{:.2f}', 'sharpe': '{:.2f}'
-                }))
-        else:
-            st.info("Evaluate a model or click 'Evaluate All Models' to show leaderboard metrics.")
+            if model_metrics_leaderboard:
+                leaderboard_df = pd.DataFrame(model_metrics_leaderboard).T
+                st.dataframe(
+                    leaderboard_df[["test_rmse", "test_mae", "test_r2", "sharpe"]].style.format({
+                        'test_rmse': '{:.2f}', 'test_mae': '{:.2f}', 'test_r2': '{:.2f}', 'sharpe': '{:.2f}'
+                    }))
+            else:
+                st.info("Evaluate a model or click 'Evaluate All Models' to show leaderboard metrics.")
         
         # Warning disclaimer
         st.markdown("""
