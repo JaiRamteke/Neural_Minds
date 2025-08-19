@@ -10,4 +10,5 @@ yfinance
 statsmodels
 prophet
 tensorflow
+keras
 shap
