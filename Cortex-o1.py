@@ -1258,7 +1258,7 @@ def main():
             metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
             model_metrics_leaderboard["Random Forest"] = metrics
         elif selected_model == "Prophet" and PROPHET_AVAILABLE:
-            m, metrics, pred, y_test = train_prophet(df)
+            m, metrics, pred, y_test, best_params = train_prophet(df)
             next_pred = predict_prophet_next(m)
             metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
             prediction = next_pred
