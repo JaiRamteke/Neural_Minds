@@ -919,10 +919,29 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
 
     return best_model, best_metrics, best_pred, y_test, best_params
 
-def predict_prophet_next(m):
-    future = m.make_future_dataframe(periods=1)
-    forecast = m.predict(future)
-    return forecast['yhat'].iloc[-1]
+def predict_prophet_next(model, df, use_regressors=True):
+    """
+    Predict the next day with Prophet, including regressors if available.
+    """
+    if model is None:
+        return None
+
+    try:
+        # Build 1-day future
+        future = model.make_future_dataframe(periods=1, freq='D')
+
+        if use_regressors:
+            for r in ['MA_20', 'RSI', 'Volume']:
+                if r in df.columns:
+                    # Take the last known regressor value
+                    future.loc[future.index[-1], r] = df[r].iloc[-1]
+
+        forecast = model.predict(future)
+        return float(forecast['yhat'].iloc[-1])
+
+    except Exception as e:
+        st.warning(f"Prophet next prediction failed: {e}")
+        return None
 # --------------------------
 
 # ---- LSTM (robust) ----
@@ -1259,7 +1278,7 @@ def main():
             model_metrics_leaderboard["Random Forest"] = metrics
         elif selected_model == "Prophet" and PROPHET_AVAILABLE:
             m, metrics, pred, y_test, best_params = train_prophet(df)
-            next_pred = predict_prophet_next(m)
+            next_pred = predict_prophet_next(m, df)
             metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
             prediction = next_pred
             model_metrics_leaderboard["Prophet"] = metrics
