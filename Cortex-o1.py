@@ -840,111 +840,84 @@ def lstm_last_window_sensitivity(model, scaler, df, sequence_length=10, steps=9,
 # ---- PROPHET ADDITION ----
 def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
     """
-    Robust Prophet training:
-    - df must have 'Date' and 'Close'
-    - use_log: whether to log-transform the 'Close' series (often stabilizes variance)
-    - grid_cps: list of changepoint_prior_scale to try (simple grid)
-    Returns (best_model, best_metrics, preds_on_test, y_test_values, best_params)
-    """
-    # basic checks
-    if df is None or len(df) < 30:
-        return None, {
-            'train_rmse': np.nan, 'test_rmse': np.nan,
-            'train_mae': np.nan, 'test_mae': np.nan,
-            'train_r2': np.nan, 'test_r2': np.nan,
-            'train_size': 0, 'test_size': 0
-        }, None, None, {}
+    Train Prophet model with optional log transform and cross-validation over changepoint_prior_scale.
+    Includes regressors if present (MA_20, RSI, Volume).
 
-    # Prepare prophet dataframe
-    dfp = df[['Date','Close']].rename(columns={'Date':'ds','Close':'y'}).copy()
+    Returns:
+        best_model (Prophet): Fitted Prophet model
+        metrics (dict): Test set evaluation metrics
+        y_pred (ndarray): Predictions on test set (inverse transformed if log used)
+        y_test (ndarray): Actual test set values (inverse transformed if log used)
+        best_params (dict): Best changepoint_prior_scale chosen
+    """
+    from prophet import Prophet
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+    # Prepare dataframe for Prophet
+    dfp = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'}).copy()
+
+    # Apply log transform if requested
     if use_log:
-        # Keep original for inverse later
-        dfp['y_orig'] = dfp['y']
         dfp['y'] = np.log1p(dfp['y'])
 
-    # Add regressors if exist (MA_20, RSI, Volume)
+    # Add regressors if available
     regs = []
-    for r in ['MA_20','RSI','Volume']:
+    for r in ['MA_20', 'RSI', 'Volume']:
         if r in df.columns:
             dfp[r] = df[r].values
             regs.append(r)
 
-    # train/test split last 20%
-    n = len(dfp)
-    n_test = max(1, int(n * 0.2))
-    train_df = dfp[:-n_test].reset_index(drop=True)
-    test_df = dfp[-n_test:].reset_index(drop=True)
+    # 🚀 Drop rows with NaN values (important for MA_20, RSI, etc.)
+    dfp = dfp.dropna(subset=['y'] + regs).reset_index(drop=True)
 
-    best_model = None
-    best_score = np.inf
-    best_metrics = None
-    best_preds = None
-    best_params = {}
+    # Train/test split
+    train_size = int(len(dfp) * 0.8)
+    train, test = dfp.iloc[:train_size], dfp.iloc[train_size:]
 
+    best_model, best_metrics, best_pred, best_params = None, None, None, None
+
+    # Grid search over changepoint_prior_scale
     for cps in grid_cps:
         try:
-            m = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=True,
-                        changepoint_prior_scale=cps)
-            # add regressors
+            m = Prophet(changepoint_prior_scale=cps, yearly_seasonality=True,
+                        daily_seasonality=False, weekly_seasonality=True)
             for r in regs:
                 m.add_regressor(r)
-            # fit
-            m.fit(train_df)
-            # forecast for test period: create future for length of test
-            future = m.make_future_dataframe(periods=n_test, freq='D')
-            # attach regressors for future rows using test_df values if present
-            if regs:
-                # merge by ds to ensure the columns exist
-                merged = pd.merge(future, dfp[['ds'] + regs], how='left', on='ds')
-                future = merged
-            fc = m.predict(future)
-            # extract last n_test predictions aligned to test_df ds
-            preds = fc[['ds','yhat']].set_index('ds').reindex(test_df['ds']).reset_index()['yhat'].values
 
-            # inverse transform if used log
+            m.fit(train)
+
+            future = m.make_future_dataframe(periods=len(test), freq='D')
+            for r in regs:
+                # Carry over regressor values
+                future[r] = dfp[r].iloc[:len(future)].values
+
+            forecast = m.predict(future)
+            y_pred = forecast['yhat'].iloc[-len(test):].values
+            y_test = test['y'].values
+
+            # Inverse transform if log was applied
             if use_log:
-                preds_inv = np.expm1(preds)
-                y_test = np.expm1(test_df['y'].values)
-            else:
-                preds_inv = preds
-                y_test = test_df['y'].values
+                y_pred = np.expm1(y_pred)
+                y_test = np.expm1(y_test)
 
-            # compute metrics
-            test_rmse = float(np.sqrt(mean_squared_error(y_test, preds_inv)))
-            test_mae  = float(mean_absolute_error(y_test, preds_inv))
-            test_r2   = float(r2_score(y_test, preds_inv))
+            # Compute metrics
+            metrics = {
+                "test_rmse": np.sqrt(mean_squared_error(y_test, y_pred)),
+                "test_mae": mean_absolute_error(y_test, y_pred),
+                "test_r2": r2_score(y_test, y_pred)
+            }
 
-            # choose best by RMSE
-            if test_rmse < best_score:
-                best_score = test_rmse
-                best_model = m
-                best_metrics = {
-                    'train_rmse': None,
-                    'test_rmse': test_rmse,
-                    'train_mae': None,
-                    'test_mae': test_mae,
-                    'train_r2': None,
-                    'test_r2': test_r2,
-                    'train_size': len(train_df),
-                    'test_size': len(test_df)
-                }
-                best_preds = preds_inv
-                best_params = {'changepoint_prior_scale': cps, 'use_log': use_log, 'regs': regs}
+            # Keep best model
+            if (best_metrics is None) or (metrics["test_rmse"] < best_metrics["test_rmse"]):
+                best_model, best_metrics, best_pred, best_params = m, metrics, y_pred, {"cps": cps}
+
         except Exception as e:
-            # try next hyperparam quietly but log in UI
-            st.warning(f"Prophet training error for cps={cps}: {str(e)[:200]}")
+            print(f"Prophet training error for cps={cps}: {e}")
             continue
 
-    if best_model is None:
-        # failed to fit any model
-        return None, {
-            'train_rmse': np.nan, 'test_rmse': np.nan,
-            'train_mae': np.nan, 'test_mae': np.nan,
-            'train_r2': np.nan, 'test_r2': np.nan,
-            'train_size': 0, 'test_size': 0
-        }, None, None, {}
-
-    return best_model, best_metrics, best_preds, np.expm1(test_df['y'].values) if use_log else test_df['y'].values, best_params
+    return best_model, best_metrics, best_pred, y_test, best_params
 
 def predict_prophet_next(m):
     future = m.make_future_dataframe(periods=1)
@@ -1891,9 +1864,10 @@ def main():
 
                 # Prophet
                 if PROPHET_AVAILABLE:
-                    m, met, _, _ = train_prophet(df)
-                    met["sharpe"] = calculate_sharpe_ratio(df["Close"])
-                    leaderboard_metrics["Prophet"] = met
+                    m, metrics, pred, y_test, best_params = train_prophet(df)
+                    if metrics:  # only if Prophet succeeded
+                        metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                        leaderboard_metrics["Prophet"] = metrics
 
                 # LSTM
                 if LSTM_AVAILABLE:
