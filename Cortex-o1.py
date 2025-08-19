@@ -978,6 +978,17 @@ def predict_prophet_next(m, df=None):
 
     forecast = m.predict(future)
     return float(forecast['yhat'].iloc[-1])
+
+def plot_prophet_components(m, df=None, periods=60):
+    """
+    Wrapper for backward compatibility. Uses prophet_components_figure.
+    """
+    fig = prophet_components_figure(m)
+    if fig is not None:
+        st.pyplot(fig)
+    else:
+        st.warning("Could not render Prophet components.")
+        
 # --------------------------
 
 # ---- LSTM (robust) ----
