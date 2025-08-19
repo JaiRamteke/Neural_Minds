@@ -15,6 +15,22 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import warnings
 warnings.filterwarnings('ignore')
 
+# ======================== NEW LIBRARIES FOR LSTM AND PROPHET ====================
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except ImportError:
+    PROPHET_AVAILABLE = False
+
+try:
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense
+    from tensorflow.keras.callbacks import EarlyStopping
+    from tensorflow.keras.optimizers import Adam
+    LSTM_AVAILABLE = True
+except ImportError:
+    LSTM_AVAILABLE = False
+
 # Try to import yfinance
 try:
     import yfinance as yf
@@ -666,6 +682,94 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
         pass
     st.write(f"- {label}: Data not available")
 
+# ======================== NEW METRIC FUNCTION ========================
+def calculate_sharpe_ratio(prices, risk_free_rate=0.0):
+    returns = prices.pct_change().dropna()
+    if returns.std() == 0: return 0.0
+    sharpe = (returns.mean() - risk_free_rate) / returns.std()
+    return sharpe * np.sqrt(252)  # Annualized
+
+# ======================================================================
+
+# ---- PROPHET ADDITION ----
+def train_prophet(df):
+    prophet_data = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'})
+    n_test = int(len(df)*0.2)
+    train_data = prophet_data[:-n_test]
+    test_data = prophet_data[-n_test:]
+    m = Prophet(daily_seasonality=True)
+    m.fit(train_data)
+    future = m.make_future_dataframe(periods=n_test)
+    forecast = m.predict(future)
+    pred = forecast['yhat'][-n_test:].values
+    test_y = test_data['y'].values
+    metrics = {
+        'train_rmse': None,
+        'test_rmse': np.sqrt(mean_squared_error(test_y, pred)),
+        'train_mae': None,
+        'test_mae': mean_absolute_error(test_y, pred),
+        'train_r2': None,
+        'test_r2': r2_score(test_y, pred),
+        'train_size': train_data.shape[0],
+        'test_size': test_data.shape
+    }
+    return m, metrics, pred, test_y
+
+def predict_prophet_next(m):
+    future = m.make_future_dataframe(periods=1)
+    forecast = m.predict(future)
+    return forecast['yhat'].iloc[-1]
+# --------------------------
+
+# ---- LSTM ADDITION ----
+def prepare_lstm_data(df, sequence_length=10):
+    from sklearn.preprocessing import MinMaxScaler
+    close_prices = df['Close'].values.reshape(-1,1)
+    scaler = MinMaxScaler()
+    scaled = scaler.fit_transform(close_prices)
+    X, y = [], []
+    for i in range(len(scaled)-sequence_length):
+        X.append(scaled[i:i+sequence_length, 0])
+        y.append(scaled[i+sequence_length, 0])
+    X, y = np.array(X), np.array(y)
+    X = X.reshape((X.shape[0], X.shape[1], 1))
+    return X, y, scaler
+
+def train_lstm(df):
+    sequence_length = 10
+    X, y, scaler = prepare_lstm_data(df, sequence_length)
+    split_idx = int(len(X)*0.8)
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+    model = Sequential()
+    model.add(LSTM(50, input_shape=(X.shape[1],1)))
+    model.add(Dense(1))
+    model.compile(optimizer=Adam(0.001), loss='mse')
+    early_stop = EarlyStopping(patience=5, restore_best_weights=True)
+    model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.1, callbacks=[early_stop], verbose=0)
+    y_pred = model.predict(X_test).flatten()
+    y_pred_inv = scaler.inverse_transform(y_pred.reshape(-1,1)).flatten()
+    y_test_inv = scaler.inverse_transform(y_test.reshape(-1,1)).flatten()
+    metrics = {
+        'train_rmse': None,
+        'test_rmse': np.sqrt(mean_squared_error(y_test_inv, y_pred_inv)),
+        'train_mae': None,
+        'test_mae': mean_absolute_error(y_test_inv, y_pred_inv),
+        'train_r2': None,
+        'test_r2': r2_score(y_test_inv, y_pred_inv),
+        'train_size': X_train.shape[0],
+        'test_size': X_test.shape
+    }
+    return model, scaler, metrics, y_pred_inv, y_test_inv, sequence_length
+
+def predict_lstm_next(model, scaler, df, sequence_length):
+    X, _, _ = prepare_lstm_data(df, sequence_length)
+    last_X = X[-1:]
+    pred_scaled = model.predict(last_X)
+    pred = scaler.inverse_transform(pred_scaled.reshape(-1,1)).flatten()
+    return pred
+# -----------------------
+
 def main():
     # Title and description
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
@@ -791,11 +895,15 @@ def main():
         
         st.sidebar.markdown("### 🤖 Select Models for Forecasting")
 
-        model_choices = st.sidebar.multiselect(
-            "Choose the models:",
-            ["Prophet", "LSTM", "Random Forest",],
-            default=["Random Forest"]  # or [] if you want none pre-selected
-        )
+        # =============== RECOMMENDED: Model SELECTORS and METRIC COLLECTOR ==============
+        model_choices = ['Random Forest']
+        if PROPHET_AVAILABLE:
+            model_choices.append("Prophet")
+        if LSTM_AVAILABLE:
+            model_choices.append("LSTM")
+
+        selected_model = st.selectbox("Select Model", model_choices)
+        model_metrics_leaderboard = {}
 
         # Time period selection
         st.markdown("#### 📅 Time Period")
@@ -820,12 +928,13 @@ def main():
             return
         
         # Create tabs for different views
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📊 Stock Analysis", 
             "🔮 Predictions", 
             "📈 Charts", 
             "🤖 Model Performance", 
-            "📋 Data Table"
+            "📋 Data Table",
+            "🏆 Leaderboard & Risk"
         ])
         
         # Fetch stock data depending on user choice
@@ -863,6 +972,25 @@ def main():
         # Process the data
         data_source = df.attrs.get('source', used_source)
         df = process_stock_data(df, ticker, data_source)
+
+        if selected_model == "Random Forest":
+            model, scaler, metrics, feat_imp = train_model(df)
+            prediction = predict_next_price(model, scaler, df)
+            metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            model_metrics_leaderboard["Random Forest"] = metrics
+        elif selected_model == "Prophet" and PROPHET_AVAILABLE:
+            m, metrics, pred, y_test = train_prophet(df)
+            next_pred = predict_prophet_next(m)
+            metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            prediction = next_pred
+            model_metrics_leaderboard["Prophet"] = metrics
+        elif selected_model == "LSTM" and LSTM_AVAILABLE:
+            model, scaler, metrics, y_pred_inv, y_test_inv, seq_len = train_lstm(df)
+            prediction = predict_lstm_next(model, scaler, df, seq_len)
+            metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            model_metrics_leaderboard["LSTM"] = metrics
+        else:
+            prediction = None
 
         if df is None or df.empty:
             st.error("❌ Unable to process stock data. Please try again.")
@@ -1340,6 +1468,37 @@ def main():
                         st.write("- Volatility: Data not available")
                 except Exception:
                     st.write("- Volatility: Data not available")
+            # ============ TAB 6: Leaderboard & Risk (ONLY HERE) ============
+    with tab6:
+        st.header("Model Leaderboard & Risk Metrics")
+        # Optionally allow user to run all models and collect metrics
+        if st.button("Evaluate All Models"):
+            # Run all available models for leaderboard
+            leaderboard_metrics = {}
+            # Random Forest
+            mdl, sclr, met, _ = train_model(df)
+            met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            leaderboard_metrics["Random Forest"] = met
+            # Prophet
+            if PROPHET_AVAILABLE:
+                m, met, _, _ = train_prophet(df)
+                met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                leaderboard_metrics["Prophet"] = met
+            # LSTM
+            if LSTM_AVAILABLE:
+                mdl, sclr, met, _, _, seq_len = train_lstm(df)
+                met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                leaderboard_metrics["LSTM"] = met
+            model_metrics_leaderboard = leaderboard_metrics
+
+        if model_metrics_leaderboard:
+            leaderboard_df = pd.DataFrame(model_metrics_leaderboard).T
+            st.dataframe(
+                leaderboard_df[["test_rmse", "test_mae", "test_r2", "sharpe"]].style.format({
+                    'test_rmse': '{:.2f}', 'test_mae': '{:.2f}', 'test_r2': '{:.2f}', 'sharpe': '{:.2f}'
+                }))
+        else:
+            st.info("Evaluate a model or click 'Evaluate All Models' to show leaderboard metrics.")
         
         # Warning disclaimer
         st.markdown("""
@@ -1362,7 +1521,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     
-    else:
         # Welcome screen
         st.markdown(
             """
