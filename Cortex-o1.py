@@ -1245,6 +1245,16 @@ def main():
         st.markdown("#### 🔮 Prediction Settings")
         prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
         
+        # Reset prediction state if inputs change
+        if "last_config" not in st.session_state:
+            st.session_state.last_config = (None, None, None)
+
+        current_config = (ticker, selected_model, period)
+
+        if current_config != st.session_state.last_config:
+            st.session_state.predict_clicked = False
+            st.session_state.last_config = current_config
+
         # Action button
         if st.button("🚀 Predict Stock Price", type="primary", use_container_width=True):
             st.session_state.predict_clicked = True
