@@ -965,9 +965,17 @@ def prophet_components_figure(m):
         return None
 
 
-def predict_prophet_next(m):
+def predict_prophet_next(m, df=None):
     future = m.make_future_dataframe(periods=1)
     future = _merge_future_with_history_regressors(m, future)
+
+    # If df is provided and has regressors, merge/forward-fill them
+    if df is not None:
+        for r in getattr(m, 'extra_regressors', {}):
+            if r in df.columns and r not in future.columns:
+                last_val = df[r].dropna().iloc[-1]
+                future[r] = [last_val] * len(future)
+
     forecast = m.predict(future)
     return float(forecast['yhat'].iloc[-1])
 # --------------------------
