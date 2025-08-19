@@ -12,6 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.inspection import permutation_importance  # XAI: global feature importance
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -30,6 +31,12 @@ try:
     LSTM_AVAILABLE = True
 except ImportError:
     LSTM_AVAILABLE = False
+
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except Exception:
+    SHAP_AVAILABLE = False
 
 # Try to import yfinance
 try:
@@ -688,6 +695,114 @@ def calculate_sharpe_ratio(prices, risk_free_rate=0.0):
     if returns.std() == 0: return 0.0
     sharpe = (returns.mean() - risk_free_rate) / returns.std()
     return sharpe * np.sqrt(252)  # Annualized
+
+def split_features_for_xai(df):
+    """Rebuild the same split used in training for XAI pipelines."""
+    X, y, feature_names = prepare_features(df)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, shuffle=False
+    )
+    return X, y, X_train, X_test, y_train, y_test, feature_names
+
+def rf_permutation_importance(model, scaler, df):
+    """
+    Compute permutation importance on the RF model using the consistent split + scaler.
+    Returns (imp_df, X_test, y_test, feature_names, X_test_scaled)
+    """
+    _, _, _, X_test, _, y_test, feature_names = split_features_for_xai(df)
+    X_test_scaled = scaler.transform(X_test)
+    r = permutation_importance(
+        model, X_test_scaled, y_test,
+        n_repeats=10, random_state=42, n_jobs=-1
+    )
+    imp_df = (
+        pd.DataFrame({"feature": feature_names, "importance": r.importances_mean})
+        .sort_values("importance", ascending=False)
+        .reset_index(drop=True)
+    )
+    return imp_df, X_test, y_test, feature_names, X_test_scaled
+
+def rf_shap_global_local(model, X_test_scaled, feature_names, local_idx=-1):
+    """
+    Compute SHAP values for RF if SHAP is available. Returns (global_importance_df, local_df) or (None, None).
+    """
+    if not ('SHAP_AVAILABLE' in globals() and SHAP_AVAILABLE):
+        return None, None
+    try:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_test_scaled)
+        # If model is regressor, shap_values is 2D (n_samples, n_features)
+        if isinstance(shap_values, list):  # safety for classifiers; not expected here
+            shap_values = shap_values[0]
+        # Global: mean |SHAP|
+        mean_abs = np.mean(np.abs(shap_values), axis=0)
+        global_df = pd.DataFrame({"feature": feature_names, "mean_abs_shap": mean_abs}) \
+                        .sort_values("mean_abs_shap", ascending=False)
+        # Local: last test sample contributions
+        local_vals = shap_values[local_idx]
+        local_df = pd.DataFrame({"feature": feature_names, "shap_value": local_vals}) \
+                        .sort_values("shap_value", key=np.abs, ascending=False)
+        return global_df, local_df
+    except Exception:
+        return None, None
+
+def rf_whatif_curves(model, scaler, df, top_features, points=15):
+    """
+    For top features, vary each one across its training distribution quantiles and
+    compute predicted price to show sensitivity curves.
+    Returns dict: {feature: (grid_values, preds)}
+    """
+    X, _, X_train, X_test, _, _, feature_names = split_features_for_xai(df)
+    # Base = last available test sample in original (unscaled) space
+    base = X_test.iloc[-1].copy()
+    curves = {}
+    for feat in top_features:
+        if feat not in X.columns: 
+            continue
+        q = np.linspace(0.05, 0.95, points)
+        grid = np.quantile(X_train[feat].values, q)
+        preds = []
+        for val in grid:
+            x_new = base.copy()
+            x_new[feat] = val
+            x_scaled = scaler.transform(x_new.values.reshape(1, -1))
+            pred = float(model.predict(x_scaled)[0])
+            preds.append(pred)
+        curves[feat] = (grid, np.array(preds))
+    return curves
+
+def prophet_components_figure(m):
+    """Return a Matplotlib figure of Prophet components (trend/seasonality) if possible."""
+    try:
+        future = m.make_future_dataframe(periods=0)
+        fc = m.predict(future)
+        fig = m.plot_components(fc)
+        return fig
+    except Exception:
+        return None
+
+def lstm_last_window_sensitivity(model, scaler, df, sequence_length=10, steps=9, pct=0.05):
+    """
+    Simple 'what-if' for LSTM: perturb the most recent price in the last window ±pct
+    and see the next prediction response.
+    """
+    X, y, _sc = prepare_lstm_data(df, sequence_length)
+    if len(X) == 0: 
+        return None, None
+    base = X[-1].copy().reshape(sequence_length, 1)
+    # Build factors from -pct to +pct
+    factors = np.linspace(1 - pct, 1 + pct, steps)
+    preds = []
+    for f in factors:
+        perturbed = base.copy()
+        perturbed[-1, 0] = perturbed[-1, 0] * f
+        p = model.predict(perturbed.reshape(1, sequence_length, 1), verbose=0).flatten()
+        pred = scaler.inverse_transform(p.reshape(-1, 1)).flatten()[0]
+        preds.append(pred)
+    # Recover original (inverse transform of base last-step prediction for reference)
+    p0 = model.predict(base.reshape(1, sequence_length, 1), verbose=0).flatten()
+    base_pred = scaler.inverse_transform(p0.reshape(-1, 1)).flatten()[0]
+    return factors, (np.array(preds), base_pred)
 
 # ======================================================================
 
@@ -1368,6 +1483,95 @@ def main():
                         yaxis={'categoryorder':'total ascending'}
                     )
                     st.plotly_chart(fig_importance, use_container_width=True)
+
+                    # ===================== 🧩 Explainable AI =====================
+                    st.markdown("### 🧩 Explainable AI")
+
+                    if selected_model == "Random Forest" and (model is not None) and (scaler is not None):
+                        # 1) Global drivers via Permutation Importance
+                        with st.expander("🌍 Global Drivers (Permutation Importance)", expanded=True):
+                            try:
+                                imp_df, X_test, y_test, feat_names, X_test_scaled = rf_permutation_importance(model, scaler, df)
+                                fig_pi = px.bar(
+                                    imp_df.head(12),
+                                    x="importance", y="feature", orientation="h",
+                                    title="Permutation Importance (Top 12)", color="importance",
+                                    color_continuous_scale="viridis", template="plotly_white"
+                                )
+                                fig_pi.update_layout(yaxis={'categoryorder':'total ascending'})
+                                st.plotly_chart(fig_pi, use_container_width=True)
+                            except Exception as e:
+                                st.warning(f"Could not compute permutation importance: {e}")
+
+                        # 2) SHAP (if installed) – global & local
+                        with st.expander("🔎 Local & Global Explanations (SHAP)", expanded=False):
+                            global_df, local_df = rf_shap_global_local(model, X_test_scaled, feat_names)
+                            if global_df is not None and local_df is not None:
+                                st.write("**Global (mean |SHAP|)** – which features drive predictions overall:")
+                                st.dataframe(global_df.head(12), use_container_width=True)
+
+                                st.write("**Local (last test point)** – feature contributions to the last prediction:")
+                                st.dataframe(local_df.head(12), use_container_width=True)
+                            else:
+                                st.info("SHAP not available. Install `shap` for richer explanations. Falling back to What-if analysis below.")
+
+                        # 3) What-if curves for top features
+                        with st.expander("🧪 What-if Analysis (Top Drivers)", expanded=True):
+                            try:
+                                # Pick top 3 by permutation importance
+                                if 'imp_df' not in locals():
+                                    imp_df, X_test, y_test, feat_names, X_test_scaled = rf_permutation_importance(model, scaler, df)
+                                top_feats = imp_df['feature'].head(3).tolist()
+                                curves = rf_whatif_curves(model, scaler, df, top_feats, points=15)
+                                base_close = float(df['Close'].iloc[-1]) if 'Close' in df.columns else None
+                                for feat, (grid, preds) in curves.items():
+                                    fig_wi = go.Figure()
+                                    fig_wi.add_trace(go.Scatter(x=grid, y=preds, mode='lines+markers', name='Predicted Price'))
+                                    fig_wi.update_layout(
+                                        title=f"What-if: vary '{feat}' and observe predicted price",
+                                        xaxis_title=f"{feat} (quantiles of train data)",
+                                        yaxis_title="Predicted Close",
+                                        template="plotly_white"
+                                    )
+                                    st.plotly_chart(fig_wi, use_container_width=True)
+                                if base_close is not None:
+                                    st.caption(f"Reference: last actual close ≈ {base_close:.2f}")
+                            except Exception as e:
+                                st.warning(f"What-if curves unavailable: {e}")
+
+                    elif selected_model == "Prophet" and PROPHET_AVAILABLE and ('m' in locals()) and (m is not None):
+                        with st.expander("📆 Prophet Components (Trend / Seasonality)", expanded=True):
+                            fig_comp = prophet_components_figure(m)
+                            if fig_comp is not None:
+                                st.pyplot(fig_comp, use_container_width=True)
+                            else:
+                                st.info("Could not render Prophet components.")
+
+                    elif selected_model == "LSTM" and LSTM_AVAILABLE and ('model' in locals()) and (model is not None):
+                        with st.expander("🧪 LSTM What-if (last window sensitivity)", expanded=True):
+                            try:
+                                # Use the same sequence_length as training default (10)
+                                factors, (preds, base_pred) = lstm_last_window_sensitivity(model, scaler, df, sequence_length=10, steps=9, pct=0.05)
+                                if factors is not None:
+                                    x_vals = (factors - 1.0) * 100.0  # % perturbation
+                                    fig_lstm = go.Figure()
+                                    fig_lstm.add_trace(go.Scatter(x=x_vals, y=preds, mode='lines+markers', name='Predicted Next Close'))
+                                    fig_lstm.add_hline(y=base_pred, line_dash="dash", annotation_text=f"Base prediction ≈ {base_pred:.2f}")
+                                    fig_lstm.update_layout(
+                                        title="LSTM What-if: perturb most recent input (%) and observe next prediction",
+                                        xaxis_title="Perturbation of last input (%)",
+                                        yaxis_title="Predicted Next Close",
+                                        template="plotly_white"
+                                    )
+                                    st.plotly_chart(fig_lstm, use_container_width=True)
+                                else:
+                                    st.info("Not enough data for LSTM sensitivity.")
+                            except Exception as e:
+                                st.warning(f"LSTM what-if unavailable: {e}")
+                    else:
+                        st.info("Explainability is available for Random Forest by default. Select RF in the sidebar to see full XAI.")
+                    
+                    # ==============================================================
                     
                     # Feature explanation
                     st.info("""
