@@ -850,11 +850,6 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
         y_test (ndarray): Actual test set values (inverse transformed if log used)
         best_params (dict): Best changepoint_prior_scale chosen
     """
-    from prophet import Prophet
-    import numpy as np
-    import pandas as pd
-    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-
     # Prepare dataframe for Prophet
     dfp = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'}).copy()
 
@@ -872,6 +867,11 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
     # 🚀 Drop rows with NaN values (important for MA_20, RSI, etc.)
     dfp = dfp.dropna(subset=['y'] + regs).reset_index(drop=True)
 
+    # Safety check: ensure enough data
+    if dfp.empty or len(dfp) < 30:
+        st.error("Not enough clean data for Prophet.")
+        return None, {}, None, None, None
+
     # Train/test split
     train_size = int(len(dfp) * 0.8)
     train, test = dfp.iloc[:train_size], dfp.iloc[train_size:]
@@ -881,8 +881,12 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
     # Grid search over changepoint_prior_scale
     for cps in grid_cps:
         try:
-            m = Prophet(changepoint_prior_scale=cps, yearly_seasonality=True,
-                        daily_seasonality=False, weekly_seasonality=True)
+            m = Prophet(
+                changepoint_prior_scale=cps,
+                yearly_seasonality=True,
+                daily_seasonality=False,
+                weekly_seasonality=True
+            )
             for r in regs:
                 m.add_regressor(r)
 
@@ -890,8 +894,14 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
 
             future = m.make_future_dataframe(periods=len(test), freq='D')
             for r in regs:
-                # Carry over regressor values
-                future[r] = dfp[r].iloc[:len(future)].values
+                if len(dfp) >= len(future):
+                    future[r] = dfp[r].iloc[:len(future)].values
+                else:
+                    # Forward-fill last value if needed
+                    future[r] = pd.concat([
+                        dfp[r],
+                        pd.Series([dfp[r].iloc[-1]] * (len(future) - len(dfp)))
+                    ], ignore_index=True)
 
             forecast = m.predict(future)
             y_pred = forecast['yhat'].iloc[-len(test):].values
@@ -969,6 +979,19 @@ def plot_prophet_components(model, df, periods=30):
 
     except Exception as e:
         st.error(f"Could not render Prophet components: {e}")
+
+def prophet_components_figure(m):
+    """Return a Matplotlib figure of Prophet components (trend/seasonality) if possible."""
+    try:
+        if m is None:
+            return None
+        future = m.make_future_dataframe(periods=0)
+        fc = m.predict(future)
+        fig = m.plot_components(fc)
+        return fig
+    except Exception as e:
+        st.warning(f"Prophet components unavailable: {e}")
+        return None
 # --------------------------
 
 # ---- LSTM (robust) ----
