@@ -1557,26 +1557,37 @@ def main():
                     elif selected_model == "LSTM" and LSTM_AVAILABLE and ('model' in locals()) and (model is not None):
                         with st.expander("🧪 LSTM What-if (last window sensitivity)", expanded=True):
                             try:
-                                # Use the same sequence_length as training default (10)
-                                factors, (preds, base_pred) = lstm_last_window_sensitivity(model, scaler, df, sequence_length=10, steps=9, pct=0.05)
-                                if factors is not None:
-                                    x_vals = (factors - 1.0) * 100.0  # % perturbation
-                                    fig_lstm = go.Figure()
-                                    fig_lstm.add_trace(go.Scatter(x=x_vals, y=preds, mode='lines+markers', name='Predicted Next Close'))
-                                    fig_lstm.add_hline(y=base_pred, line_dash="dash", annotation_text=f"Base prediction ≈ {base_pred:.2f}")
-                                    fig_lstm.update_layout(
-                                        title="LSTM What-if: perturb most recent input (%) and observe next prediction",
-                                        xaxis_title="Perturbation of last input (%)",
-                                        yaxis_title="Predicted Next Close",
-                                        template="plotly_white"
-                                    )
-                                    st.plotly_chart(fig_lstm, use_container_width=True)
+                                # Make sure this is a Keras LSTM model
+                                if "keras" not in str(type(model)):
+                                    st.info("LSTM model not available or not a Keras model in this run.")
                                 else:
-                                    st.info("Not enough data for LSTM sensitivity.")
+                                    factors, (preds, base_pred) = lstm_last_window_sensitivity(
+                                        model, scaler, df, sequence_length=10, steps=9, pct=0.05
+                                    )
+                                    if factors is not None:
+                                        x_vals = (factors - 1.0) * 100.0  # % perturbation
+                                        fig_lstm = go.Figure()
+                                        fig_lstm.add_trace(go.Scatter(
+                                            x=x_vals, y=preds,
+                                            mode='lines+markers', name='Predicted Next Close'
+                                        ))
+                                        fig_lstm.add_hline(
+                                            y=base_pred, line_dash="dash",
+                                            annotation_text=f"Base prediction ≈ {base_pred:.2f}"
+                                        )
+                                        fig_lstm.update_layout(
+                                            title="LSTM What-if: perturb most recent input (%) and observe next prediction",
+                                            xaxis_title="Perturbation of last input (%)",
+                                            yaxis_title="Predicted Next Close",
+                                            template="plotly_white"
+                                        )
+                                        st.plotly_chart(fig_lstm, use_container_width=True)
+                                    else:
+                                        st.info("Not enough data for LSTM sensitivity.")
                             except Exception as e:
                                 st.warning(f"LSTM what-if unavailable: {e}")
-                    else:
-                        st.info("Explainability is available for Random Forest by default. Select RF in the sidebar to see full XAI.")
+                            else:
+                                st.info("Explainability is available for Random Forest by default. Select RF in the sidebar to see full XAI.")
                     
                     # ==============================================================
                     
