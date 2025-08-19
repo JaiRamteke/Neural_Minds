@@ -942,6 +942,33 @@ def predict_prophet_next(model, df, use_regressors=True):
     except Exception as e:
         st.warning(f"Prophet next prediction failed: {e}")
         return None
+    
+def plot_prophet_components(model, df, periods=30):
+    """
+    Plot Prophet components (trend, weekly, yearly, regressors).
+    """
+    try:
+        if model is None:
+            st.warning("Prophet model not available.")
+            return
+
+        # Build future dataframe for prediction
+        future = model.make_future_dataframe(periods=periods, freq='D')
+
+        # Add regressors if present
+        for r in ['MA_20', 'RSI', 'Volume']:
+            if r in df.columns:
+                future[r] = df[r].reindex(future.index, method='ffill').values
+
+        # Generate forecast
+        forecast = model.predict(future)
+
+        # Plot Prophet components
+        fig = model.plot_components(forecast)
+        st.pyplot(fig)
+
+    except Exception as e:
+        st.error(f"Could not render Prophet components: {e}")
 # --------------------------
 
 # ---- LSTM (robust) ----
@@ -1883,6 +1910,8 @@ def main():
 
                 # Prophet
                 if PROPHET_AVAILABLE:
+                    st.markdown("📆 **Prophet Components (Trend / Seasonality)**")
+                    plot_prophet_components(m, df, periods=60)
                     m, metrics, pred, y_test, best_params = train_prophet(df)
                     if metrics:  # only if Prophet succeeded
                         metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
