@@ -814,82 +814,83 @@ def main():
                     st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
 
     # Welcome screen
-    st.markdown(
-            """
-            <h2 style='
-                text-align: center;
-                font-size: 40px;
-                font-weight: 800;
-                background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                text-decoration: none;
-                margin-bottom: 20px;
-            '>
-                🧠 Cortex-o1 Predictive Model
-            </h2>
-            """,
-    unsafe_allow_html=True
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("""
-                ### ✨ Premium Features:
-                - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
-                - 🤖 **Advanced AI Models**: Machine learning-powered predictions
-                - 📊 **Comprehensive Analysis**: Technical indicators & market insights
-                - 🎨 **Premium Interface**: Beautiful, responsive dark theme
-                - 📈 **Real-time Charts**: Interactive Plotly visualizations
-                - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
-
-                ### 🌍 Global Market Coverage:
-                **🇺🇸 US Stocks:**
-                - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
-                - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
-                - Meta (META), Netflix (NFLX)
-                - JPMorgan (JPM), Visa (V)
-                - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
-
-                **🇮🇳 Indian Stocks:**
-                - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
-                - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
-                - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
-                - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
-                - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
-                """)
-
-    with col2:
-        st.markdown("""
-                ### 🎯 How It Works:
-                1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
-                2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
-                3. 🤖 **AI Analysis**: ML models learn market patterns  
-                4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
-                5. 📈 **Visualize Results**: Interactive charts & detailed analytics
-
-                ### 🛠️ Technical Features:
-                - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
-                - 🔁 **Cross-validation**: Performance metrics built-in  
-                - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
-                - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
-
-                ### 💡 Pro Tips:
-                - 📅 Use longer timeframes (1y+) for more reliable predictions  
-                - 🌍 Consider external market/economic context  
-                - ⏳ Compare predictions across different timeframes  
-                - 🛡️ Always diversify your portfolio  
-                """)
-                        
-        # 👇 Bottom full-width message
-    st.markdown(
-            """
-            ---
-            👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
-            """,
+    if not predict_button:
+        st.markdown(
+                """
+                <h2 style='
+                    text-align: center;
+                    font-size: 40px;
+                    font-weight: 800;
+                    background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    text-decoration: none;
+                    margin-bottom: 20px;
+                '>
+                    🧠 Cortex-o1 Predictive Model
+                </h2>
+                """,
         unsafe_allow_html=True
-)
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+                    ### ✨ Premium Features:
+                    - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
+                    - 🤖 **Advanced AI Models**: Machine learning-powered predictions
+                    - 📊 **Comprehensive Analysis**: Technical indicators & market insights
+                    - 🎨 **Premium Interface**: Beautiful, responsive dark theme
+                    - 📈 **Real-time Charts**: Interactive Plotly visualizations
+                    - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
+
+                    ### 🌍 Global Market Coverage:
+                    **🇺🇸 US Stocks:**
+                    - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
+                    - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
+                    - Meta (META), Netflix (NFLX)
+                    - JPMorgan (JPM), Visa (V)
+                    - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
+
+                    **🇮🇳 Indian Stocks:**
+                    - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
+                    - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
+                    - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
+                    - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
+                    - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
+                    """)
+
+        with col2:
+            st.markdown("""
+                    ### 🎯 How It Works:
+                    1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
+                    2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
+                    3. 🤖 **AI Analysis**: ML models learn market patterns  
+                    4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
+                    5. 📈 **Visualize Results**: Interactive charts & detailed analytics
+
+                    ### 🛠️ Technical Features:
+                    - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
+                    - 🔁 **Cross-validation**: Performance metrics built-in  
+                    - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
+                    - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
+
+                    ### 💡 Pro Tips:
+                    - 📅 Use longer timeframes (1y+) for more reliable predictions  
+                    - 🌍 Consider external market/economic context  
+                    - ⏳ Compare predictions across different timeframes  
+                    - 🛡️ Always diversify your portfolio  
+                    """)
+                            
+            # 👇 Bottom full-width message
+        st.markdown(
+                """
+                ---
+                👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+                """,
+            unsafe_allow_html=True
+    )
     # Initialize variables (🔑 init once here)
     df, current_price = None, None
     volatility = None
