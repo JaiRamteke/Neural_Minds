@@ -790,6 +790,29 @@ def main():
     """,
     unsafe_allow_html=True
     )
+
+    # API Status Check
+    with st.expander("🔍 API Status Check", expanded=False):
+        if st.button("🔄 Test API Connections", type="primary"):
+            with st.spinner("Testing API connections..."):
+                api_status = test_api_connections()
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("📊 yfinance Status")
+                if api_status['yfinance']['working']:
+                    st.markdown(f'<div class="api-status api-working">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="api-status api-failed">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
+            
+            with col2:
+                st.subheader("🔑 Alpha Vantage Status")
+                if api_status['alpha_vantage']['working']:
+                    st.markdown('<div class="api-status api-working">✅ Alpha Vantage is working</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
+
     # Welcome screen
     st.markdown(
             """
@@ -872,28 +895,6 @@ def main():
     volatility = None
     current_price_val = None
     currency_symbol = '$'
-
-    # API Status Check
-    with st.expander("🔍 API Status Check", expanded=False):
-        if st.button("🔄 Test API Connections", type="primary"):
-            with st.spinner("Testing API connections..."):
-                api_status = test_api_connections()
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("📊 yfinance Status")
-                if api_status['yfinance']['working']:
-                    st.markdown(f'<div class="api-status api-working">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="api-status api-failed">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
-            
-            with col2:
-                st.subheader("🔑 Alpha Vantage Status")
-                if api_status['alpha_vantage']['working']:
-                    st.markdown('<div class="api-status api-working">✅ Alpha Vantage is working</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
 
     # Sidebar for inputs
     with st.sidebar:
