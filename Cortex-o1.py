@@ -822,6 +822,13 @@ def main():
     current_price_val = None
     currency_symbol = '$'
 
+    # --- Session state init ---
+    if "predict_clicked" not in st.session_state:
+        st.session_state.predict_clicked = False
+
+    if "model_metrics_leaderboard" not in st.session_state:
+        st.session_state.model_metrics_leaderboard = None
+
     # Sidebar for inputs
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
@@ -922,13 +929,11 @@ def main():
         prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
         
         # Action button
-        predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
+        if st.button("🚀 Predict Stock Price", type="primary", use_container_width=True):
+            st.session_state.predict_clicked = True
 
     # Main content area
-    if predict_button:
-        if not ticker:
-            st.error("Please enter a stock ticker symbol!")
-            return
+    if st.session_state.predict_clicked:
         
         # Create tabs for different views
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -1471,16 +1476,14 @@ def main():
                         st.write("- Volatility: Data not available")
                 except Exception:
                     st.write("- Volatility: Data not available")
+            
+            
             # ============ TAB 6: Leaderboard & Risk (ONLY HERE) ============
+
         with tab6:
             st.header("Model Leaderboard & Risk Metrics")
 
-            # Initialize session state if not present
-            if "model_metrics_leaderboard" not in st.session_state:
-                st.session_state.model_metrics_leaderboard = {}
-
-            # Button to evaluate all models
-            if st.button("⚡ Evaluate All Models"):
+            if st.button("Evaluate All Models"):
                 leaderboard_metrics = {}
 
                 # Random Forest
@@ -1500,16 +1503,14 @@ def main():
                     met["sharpe"] = calculate_sharpe_ratio(df["Close"])
                     leaderboard_metrics["LSTM"] = met
 
-                # Store in session state so it persists
+                # persist across reruns
                 st.session_state.model_metrics_leaderboard = leaderboard_metrics
 
-            # Show leaderboard if available
             if st.session_state.model_metrics_leaderboard:
                 leaderboard_df = pd.DataFrame(st.session_state.model_metrics_leaderboard).T
                 st.dataframe(
-                    leaderboard_df[["test_rmse", "test_mae", "test_r2", "sharpe"]].style.format({
-                        'test_rmse': '{:.2f}', 'test_mae': '{:.2f}', 'test_r2': '{:.2f}', 'sharpe': '{:.2f}'
-                    })
+                    leaderboard_df[["test_rmse","test_mae","test_r2","sharpe"]]
+                    .style.format({'test_rmse':'{:.2f}','test_mae':'{:.2f}','test_r2':'{:.2f}','sharpe':'{:.2f}'})
                 )
             else:
                 st.info("Evaluate a model or click 'Evaluate All Models' to show leaderboard metrics.")
