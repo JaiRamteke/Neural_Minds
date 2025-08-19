@@ -925,73 +925,43 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
 
     return best_model, best_metrics, best_pred, y_test, best_params
 
-def _merge_future_with_history_regressors(m, future):
-    regs = list(getattr(m, 'extra_regressors', {}).keys())
-    if not regs:
-        return future
+def make_future_with_optional_regressors(m, history_df, periods=1):
+    """Build a future DF that satisfies any extra regressors (fill with last known values)."""
+    future = m.make_future_dataframe(periods=periods)
 
-    hist = getattr(m, 'history', None)
-    if hist is None or hist.empty:
-        for r in regs:
-            future[r] = 0
-        return future
-
-    have_regs = [r for r in regs if r in hist.columns]
-    future = future.merge(hist[['ds'] + have_regs], on='ds', how='left')
-
-    for r in have_regs:
-        future[r] = future[r].ffill().bfill()
-
-    for r in regs:
-        if r not in future.columns:
-            future[r] = 0
-
+    # If the model was trained with extra regressors, Prophet keeps them in m.extra_regressors
+    extra = getattr(m, "extra_regressors", {}) or {}
+    if extra:
+        if history_df is None:
+            raise ValueError("Model has extra regressors; pass history_df with those columns.")
+        for reg in extra.keys():
+            # Use last valid value if present, otherwise 0.0
+            last_val = (
+                pd.to_numeric(history_df.get(reg, pd.Series(dtype=float)), errors="coerce")
+                  .dropna().iloc[-1] if reg in history_df.columns else 0.0
+            )
+            future[reg] = last_val
     return future
 
-
-def prophet_components_figure(m):
+def predict_prophet_next(m, history_df=None):
+    """Robust next-step prediction; works with or without regressors."""
     try:
-        hist = getattr(m, 'history', None)
-        if hist is not None and len(hist):
-            cols = ['ds'] + [c for c in hist.columns if c != 'y']
-            fc = m.predict(hist[cols])
-        else:
-            future = m.make_future_dataframe(periods=0)
-            future = _merge_future_with_history_regressors(m, future)
-            fc = m.predict(future)
+        future = make_future_with_optional_regressors(m, history_df, periods=1)
+        fc = m.predict(future)
+        return float(fc["yhat"].iloc[-1])
+    except Exception as e:
+        st.warning(f"Prophet next prediction failed: {e}")
+        return np.nan
+
+def plot_prophet_components_safe(m):
+    """Safe wrapper for components figure; never crashes the app."""
+    try:
+        # in-sample components; future=0 so regressors are already satisfied
+        fc = m.predict(m.make_future_dataframe(periods=0))
         return m.plot_components(fc)
     except Exception as e:
-        st.warning(f"Prophet components unavailable: {e}")
+        st.info(f"Could not render Prophet components: {e}")
         return None
-
-
-def predict_prophet_next(m, df=None):
-    future = m.make_future_dataframe(periods=1)
-    future = _merge_future_with_history_regressors(m, future)
-
-    # If df is provided and has regressors, merge/forward-fill them
-    if df is not None:
-        for r in getattr(m, 'extra_regressors', {}):
-            if r in df.columns and r not in future.columns:
-                last_val = df[r].dropna().iloc[-1]
-                future[r] = [last_val] * len(future)
-
-    forecast = m.predict(future)
-    return float(forecast['yhat'].iloc[-1])
-
-def plot_prophet_components(m, df=None, periods=60):
-    """
-    Wrapper for backward compatibility. Uses prophet_components_figure.
-    """
-    try:
-        fig = prophet_components_figure(m)
-        if fig is not None:
-            st.pyplot(fig)
-        else:
-            st.warning("Could not render Prophet components.")
-    except Exception as e:
-        st.warning(f"Prophet components unavailable: {e}")
-
 # --------------------------
 
 # ---- LSTM (robust) ----
@@ -1113,6 +1083,16 @@ def predict_lstm_next(model, scaler, df, sequence_length=10):
 model_metrics_leaderboard = {}
 
 def main():
+
+    # --- session defaults ---
+    st.session_state.setdefault("prophet_model", None)
+    st.session_state.setdefault("model_metrics_leaderboard", {})
+    # --- locals to avoid UnboundLocalError when branches don't run ---
+    m = None
+    rf_model = None
+    lstm_model = None
+    scaler = None
+
     # Title and description
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
     st.markdown(
@@ -1338,7 +1318,12 @@ def main():
             model_metrics_leaderboard["Random Forest"] = metrics
         elif selected_model == "Prophet" and PROPHET_AVAILABLE:
             m, metrics, pred, y_test, best_params = train_prophet(df)
-            next_pred = predict_prophet_next(m, df)
+            st.session_state["prophet_model"] = m
+            pm = st.session_state.get("prophet_model")
+            if pm is not None:
+                next_pred = predict_prophet_next(pm, df)  # df only needed if you trained with extra regressors
+            else:
+                next_pred = np.nan
             metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
             prediction = next_pred
             model_metrics_leaderboard["Prophet"] = metrics
@@ -1943,12 +1928,17 @@ def main():
 
                 # Prophet
                 if PROPHET_AVAILABLE:
-                    st.markdown("📆 **Prophet Components (Trend / Seasonality)**")
-                    plot_prophet_components(m, df, periods=60)
-                    m, metrics, pred, y_test, best_params = train_prophet(df)
-                    if metrics:  # only if Prophet succeeded
-                        metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
-                        leaderboard_metrics["Prophet"] = metrics
+                    pm = st.session_state.get("prophet_model")
+
+                if PROPHET_AVAILABLE and pm is not None:
+                    with st.expander("📆 Prophet Components (Trend / Seasonality)", expanded=True):
+                        fig_comp = plot_prophet_components_safe(pm)
+                        if fig_comp is not None:
+                            st.pyplot(fig_comp, use_container_width=True)
+                        else:
+                            st.info("Could not render Prophet components.")
+                else:
+                    st.info("Prophet components unavailable: model not trained yet.")
 
                 # LSTM
                 if LSTM_AVAILABLE:
