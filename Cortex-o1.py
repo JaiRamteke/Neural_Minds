@@ -850,10 +850,9 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
         y_test (ndarray): Actual test set values (inverse transformed if log used)
         best_params (dict): Best changepoint_prior_scale chosen
     """
-    # Prepare dataframe for Prophet
+    # Prepare dataframe
     dfp = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'}).copy()
 
-    # Apply log transform if requested
     if use_log:
         dfp['y'] = np.log1p(dfp['y'])
 
@@ -864,10 +863,9 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
             dfp[r] = df[r].values
             regs.append(r)
 
-    # 🚀 Drop rows with NaN values (important for MA_20, RSI, etc.)
+    # Drop NaNs
     dfp = dfp.dropna(subset=['y'] + regs).reset_index(drop=True)
 
-    # Safety check: ensure enough data
     if dfp.empty or len(dfp) < 30:
         st.error("Not enough clean data for Prophet.")
         return None, {}, None, None, None
@@ -892,12 +890,13 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
 
             m.fit(train)
 
+            # Build future frame with regressors
             future = m.make_future_dataframe(periods=len(test), freq='D')
             for r in regs:
                 if len(dfp) >= len(future):
                     future[r] = dfp[r].iloc[:len(future)].values
                 else:
-                    # Forward-fill last value if needed
+                    # forward-fill last known value
                     future[r] = pd.concat([
                         dfp[r],
                         pd.Series([dfp[r].iloc[-1]] * (len(future) - len(dfp)))
@@ -907,19 +906,16 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
             y_pred = forecast['yhat'].iloc[-len(test):].values
             y_test = test['y'].values
 
-            # Inverse transform if log was applied
             if use_log:
                 y_pred = np.expm1(y_pred)
                 y_test = np.expm1(y_test)
 
-            # Compute metrics
             metrics = {
                 "test_rmse": np.sqrt(mean_squared_error(y_test, y_pred)),
                 "test_mae": mean_absolute_error(y_test, y_pred),
                 "test_r2": r2_score(y_test, y_pred)
             }
 
-            # Keep best model
             if (best_metrics is None) or (metrics["test_rmse"] < best_metrics["test_rmse"]):
                 best_model, best_metrics, best_pred, best_params = m, metrics, y_pred, {"cps": cps}
 
@@ -929,69 +925,51 @@ def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
 
     return best_model, best_metrics, best_pred, y_test, best_params
 
-def predict_prophet_next(model, df, use_regressors=True):
-    """
-    Predict the next day with Prophet, including regressors if available.
-    """
-    if model is None:
-        return None
+def _merge_future_with_history_regressors(m, future):
+    regs = list(getattr(m, 'extra_regressors', {}).keys())
+    if not regs:
+        return future
 
-    try:
-        # Build 1-day future
-        future = model.make_future_dataframe(periods=1, freq='D')
+    hist = getattr(m, 'history', None)
+    if hist is None or hist.empty:
+        for r in regs:
+            future[r] = 0
+        return future
 
-        if use_regressors:
-            for r in ['MA_20', 'RSI', 'Volume']:
-                if r in df.columns:
-                    # Take the last known regressor value
-                    future.loc[future.index[-1], r] = df[r].iloc[-1]
+    have_regs = [r for r in regs if r in hist.columns]
+    future = future.merge(hist[['ds'] + have_regs], on='ds', how='left')
 
-        forecast = model.predict(future)
-        return float(forecast['yhat'].iloc[-1])
+    for r in have_regs:
+        future[r] = future[r].ffill().bfill()
 
-    except Exception as e:
-        st.warning(f"Prophet next prediction failed: {e}")
-        return None
-    
-def plot_prophet_components(model, df, periods=30):
-    """
-    Plot Prophet components (trend, weekly, yearly, regressors).
-    """
-    try:
-        if model is None:
-            st.warning("Prophet model not available.")
-            return
+    for r in regs:
+        if r not in future.columns:
+            future[r] = 0
 
-        # Build future dataframe for prediction
-        future = model.make_future_dataframe(periods=periods, freq='D')
+    return future
 
-        # Add regressors if present
-        for r in ['MA_20', 'RSI', 'Volume']:
-            if r in df.columns:
-                future[r] = df[r].reindex(future.index, method='ffill').values
-
-        # Generate forecast
-        forecast = model.predict(future)
-
-        # Plot Prophet components
-        fig = model.plot_components(forecast)
-        st.pyplot(fig)
-
-    except Exception as e:
-        st.error(f"Could not render Prophet components: {e}")
 
 def prophet_components_figure(m):
-    """Return a Matplotlib figure of Prophet components (trend/seasonality) if possible."""
     try:
-        if m is None:
-            return None
-        future = m.make_future_dataframe(periods=0)
-        fc = m.predict(future)
-        fig = m.plot_components(fc)
-        return fig
+        hist = getattr(m, 'history', None)
+        if hist is not None and len(hist):
+            cols = ['ds'] + [c for c in hist.columns if c != 'y']
+            fc = m.predict(hist[cols])
+        else:
+            future = m.make_future_dataframe(periods=0)
+            future = _merge_future_with_history_regressors(m, future)
+            fc = m.predict(future)
+        return m.plot_components(fc)
     except Exception as e:
         st.warning(f"Prophet components unavailable: {e}")
         return None
+
+
+def predict_prophet_next(m):
+    future = m.make_future_dataframe(periods=1)
+    future = _merge_future_with_history_regressors(m, future)
+    forecast = m.predict(future)
+    return float(forecast['yhat'].iloc[-1])
 # --------------------------
 
 # ---- LSTM (robust) ----
