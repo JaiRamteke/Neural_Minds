@@ -690,11 +690,18 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
     st.write(f"- {label}: Data not available")
 
 # ======================== NEW METRIC FUNCTION ========================
-def calculate_sharpe_ratio(prices, risk_free_rate=0.0):
-    returns = prices.pct_change().dropna()
-    if returns.std() == 0: return 0.0
-    sharpe = (returns.mean() - risk_free_rate) / returns.std()
-    return sharpe * np.sqrt(252)  # Annualized
+def calculate_sharpe_ratio(series, risk_free_rate=0.0):
+    if series is None or len(series) < 2:
+        return 0.0
+    returns = series.pct_change().dropna()
+    # Defensive checks
+    if returns.empty:
+        return 0.0
+    std = returns.std()
+    if pd.isna(std) or std == 0:
+        return 0.0
+    excess = returns - risk_free_rate
+    return (excess.mean() / std) * np.sqrt(252)  # annualized
 
 def split_features_for_xai(df):
     """Rebuild the same split used in training for XAI pipelines."""
