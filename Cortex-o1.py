@@ -932,6 +932,33 @@ def train_lstm(df):
     }
     return model, scaler, metrics, y_pred_inv, y_test_inv, sequence_length
 # -----------------------
+def predict_lstm_next(model, scaler, df, sequence_length=10):
+    """
+    Predict the next closing price using a trained LSTM model.
+    Uses the last `sequence_length` closes from df.
+    """
+    if model is None or scaler is None:
+        return None
+
+    # Ensure numeric close values
+    close_vals = pd.to_numeric(df['Close'], errors='coerce').dropna().values.reshape(-1, 1).astype(np.float32)
+
+    if len(close_vals) < sequence_length:
+        return None
+
+    # Take the last window
+    last_window = close_vals[-sequence_length:]
+    last_scaled = scaler.transform(last_window)
+
+    X_input = last_scaled.reshape(1, sequence_length, 1)
+
+    try:
+        y_scaled = model.predict(X_input, verbose=0).flatten()[0]
+        y_inv = scaler.inverse_transform([[y_scaled]])[0][0]
+        return float(y_inv)
+    except Exception as e:
+        st.warning(f"LSTM next-step prediction failed: {e}")
+        return None
 
 model_metrics_leaderboard = {}
 
