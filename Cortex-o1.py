@@ -983,12 +983,15 @@ def plot_prophet_components(m, df=None, periods=60):
     """
     Wrapper for backward compatibility. Uses prophet_components_figure.
     """
-    fig = prophet_components_figure(m)
-    if fig is not None:
-        st.pyplot(fig)
-    else:
-        st.warning("Could not render Prophet components.")
-        
+    try:
+        fig = prophet_components_figure(m)
+        if fig is not None:
+            st.pyplot(fig)
+        else:
+            st.warning("Could not render Prophet components.")
+    except Exception as e:
+        st.warning(f"Prophet components unavailable: {e}")
+
 # --------------------------
 
 # ---- LSTM (robust) ----
