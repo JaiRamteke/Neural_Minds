@@ -770,6 +770,8 @@ def predict_lstm_next(model, scaler, df, sequence_length):
     return pred
 # -----------------------
 
+model_metrics_leaderboard = {}
+
 def main():
     # Title and description
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
@@ -1490,7 +1492,7 @@ def main():
                     mdl, sclr, met, _, _, seq_len = train_lstm(df)
                     met["sharpe"] = calculate_sharpe_ratio(df["Close"])
                     leaderboard_metrics["LSTM"] = met
-                model_metrics_leaderboard = leaderboard_metrics
+                model_metrics_leaderboard = leaderboard_metrics  # update global dict
 
             if model_metrics_leaderboard:
                 leaderboard_df = pd.DataFrame(model_metrics_leaderboard).T
