@@ -788,14 +788,6 @@ def main():
                     st.info("🇮🇳 Indian stock format detected")
                 else:
                     st.info("🇺🇸 US stock format detected")
-        
-        st.sidebar.markdown("### 🤖 Select Models for Forecasting")
-
-        model_choices = st.sidebar.multiselect(
-            "Choose the models:",
-            ["Prophet", "LSTM", "Random Forest",],
-            default=["Random Forest"]  # or [] if you want none pre-selected
-        )
 
         # Time period selection
         st.markdown("#### 📅 Time Period")
