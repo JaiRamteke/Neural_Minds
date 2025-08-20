@@ -12,8 +12,31 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.inspection import permutation_importance  # XAI: global feature importance
 import warnings
 warnings.filterwarnings('ignore')
+
+# ======================== NEW LIBRARIES FOR LSTM AND PROPHET ====================
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except ImportError:
+    PROPHET_AVAILABLE = False
+
+try:
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense
+    from tensorflow.keras.callbacks import EarlyStopping
+    from tensorflow.keras.optimizers import Adam
+    LSTM_AVAILABLE = True
+except ImportError:
+    LSTM_AVAILABLE = False
+
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except Exception:
+    SHAP_AVAILABLE = False
 
 # Try to import yfinance
 try:
@@ -21,10 +44,13 @@ try:
     YFINANCE_AVAILABLE = True
 except ImportError:
     YFINANCE_AVAILABLE = False
-    st.warning("⚠️ yfinance not installed. Only Alpha Vantage will be used.")
+    # Note: st.warning moved to main() function to avoid module-level streamlit calls
 
 # Alpha Vantage Configuration
-ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
+try:
+    ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
+except (KeyError, FileNotFoundError):
+    ALPHA_VANTAGE_API_KEY = "demo"  # Use demo key for testing
 AV_BASE_URL = 'https://www.alphavantage.co/query'
 
 # Page configuration
@@ -284,37 +310,61 @@ def test_api_connections():
     
     return status
 
-@st.cache_data(ttl=300)
-def fetch_stock_data_yfinance(ticker, period="1y"):
+@st.cache_data(ttl=60)  # Shorter cache to avoid caching old failures
+def fetch_stock_data_yfinance(ticker, period="1y", max_retries=2):
+    """
+    Robust yfinance data fetch:
+    - maps ticker for yfinance (NSE -> .NS)
+    - tries yf.download, then yf.Ticker.history fallback
+    - retries with exponential backoff
+    - returns normalized dataframe or None
+    """
     try:
         ticker_mapped = map_ticker_for_source(ticker, "yfinance")
         yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
         yf_period = yf_period_map.get(period, '1y')
 
-        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
-        if df.empty:
-            return None
+        last_exc = None
+        for attempt in range(max_retries + 1):
+            try:
+                # prefer Ticker.history for more robust behavior
+                t = yf.Ticker(ticker_mapped)
+                df = t.history(period=yf_period, interval="1d", auto_adjust=False, actions=False)
+                if df is None or df.empty:
+                    # try yf.download as a fallback
+                    df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False, threads=False)
+                if df is not None and not df.empty:
+                    df = df.reset_index()
+                    # make sure Date is datetime and Close exists
+                    if 'Date' not in df.columns and df.index.name in ['Date','date']:
+                        df = df.reset_index()
+                    if 'Close' not in df.columns and 'Adj Close' in df.columns:
+                        df['Close'] = df['Adj Close']
+                    # keep expected columns only
+                    for col in ['Date','Open','High','Low','Close','Volume']:
+                        if col not in df.columns:
+                            df[col] = np.nan
+                    df = df[['Date','Open','High','Low','Close','Volume']]
+                    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+                    df = df.dropna(subset=['Date']).reset_index(drop=True)
+                    df.attrs = {'source':'yfinance','ticker':ticker_mapped}
+                    return df
+                else:
+                    last_exc = Exception("yfinance returned no data")
+            except Exception as e:
+                last_exc = e
+            # exponential backoff
+            time.sleep(1 + attempt*1.5)
 
-        df.reset_index(inplace=True)
-
-        # Ensure Date is datetime
-        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-
-        # Ensure 'Close' exists even if only 'Adj Close' was returned
-        if 'Close' not in df.columns and 'Adj Close' in df.columns:
-            df['Close'] = df['Adj Close']
-
-        df = df[['Date','Open','High','Low','Close','Volume']]
-        df['Date'] = pd.to_datetime(df['Date'])
-        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
-        return df
+        # If we reached here, failed
+        st.warning(f"yfinance fetch failed for {ticker} ({ticker_mapped}): {str(last_exc)[:240]}")
+        return None
     except Exception as e:
-        st.error(f"yfinance fetch error: {e}")
+        st.error(f"yfinance unexpected error: {e}")
         return None
 
 
-
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)  # Shorter cache to avoid caching old failures
 def fetch_stock_data_unified(ticker, period="1y"):
     try:
         mapped_ticker = map_ticker_for_source(ticker, "alpha_vantage")
@@ -666,7 +716,375 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
         pass
     st.write(f"- {label}: Data not available")
 
+# ======================== NEW METRIC FUNCTION ========================
+def calculate_sharpe_ratio(series, risk_free_rate=0.0):
+    if series is None or len(series) < 2:
+        return 0.0
+    returns = series.pct_change().dropna()
+    # Defensive checks
+    if returns.empty:
+        return 0.0
+    std = returns.std()
+    if pd.isna(std) or std == 0:
+        return 0.0
+    excess = returns - risk_free_rate
+    return (excess.mean() / std) * np.sqrt(252)  # annualized
+
+def split_features_for_xai(df):
+    """Rebuild the same split used in training for XAI pipelines."""
+    X, y, feature_names = prepare_features(df)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, shuffle=False
+    )
+    return X, y, X_train, X_test, y_train, y_test, feature_names
+
+def rf_permutation_importance(model, scaler, df):
+    """
+    Compute permutation importance on the RF model using the consistent split + scaler.
+    Returns (imp_df, X_test, y_test, feature_names, X_test_scaled)
+    """
+    _, _, _, X_test, _, y_test, feature_names = split_features_for_xai(df)
+    X_test_scaled = scaler.transform(X_test)
+    r = permutation_importance(
+        model, X_test_scaled, y_test,
+        n_repeats=10, random_state=42, n_jobs=-1
+    )
+    imp_df = (
+        pd.DataFrame({"feature": feature_names, "importance": r.importances_mean})
+        .sort_values("importance", ascending=False)
+        .reset_index(drop=True)
+    )
+    return imp_df, X_test, y_test, feature_names, X_test_scaled
+
+def rf_shap_global_local(model, X_test_scaled, feature_names, local_idx=-1):
+    """
+    Compute SHAP values for RF if SHAP is available. Returns (global_importance_df, local_df) or (None, None).
+    """
+    if not ('SHAP_AVAILABLE' in globals() and SHAP_AVAILABLE):
+        return None, None
+    try:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_test_scaled)
+        # If model is regressor, shap_values is 2D (n_samples, n_features)
+        if isinstance(shap_values, list):  # safety for classifiers; not expected here
+            shap_values = shap_values[0]
+        # Global: mean |SHAP|
+        mean_abs = np.mean(np.abs(shap_values), axis=0)
+        global_df = pd.DataFrame({"feature": feature_names, "mean_abs_shap": mean_abs}) \
+                        .sort_values("mean_abs_shap", ascending=False)
+        # Local: last test sample contributions
+        local_vals = shap_values[local_idx]
+        local_df = pd.DataFrame({"feature": feature_names, "shap_value": local_vals}) \
+                        .sort_values("shap_value", key=np.abs, ascending=False)
+        return global_df, local_df
+    except Exception:
+        return None, None
+
+def rf_whatif_curves(model, scaler, df, top_features, points=15):
+    """
+    For top features, vary each one across its training distribution quantiles and
+    compute predicted price to show sensitivity curves.
+    Returns dict: {feature: (grid_values, preds)}
+    """
+    X, _, X_train, X_test, _, _, feature_names = split_features_for_xai(df)
+    # Base = last available test sample in original (unscaled) space
+    base = X_test.iloc[-1].copy()
+    curves = {}
+    for feat in top_features:
+        if feat not in X.columns: 
+            continue
+        q = np.linspace(0.05, 0.95, points)
+        grid = np.quantile(X_train[feat].values, q)
+        preds = []
+        for val in grid:
+            x_new = base.copy()
+            x_new[feat] = val
+            x_scaled = scaler.transform(x_new.values.reshape(1, -1))
+            pred = float(model.predict(x_scaled)[0])
+            preds.append(pred)
+        curves[feat] = (grid, np.array(preds))
+    return curves
+
+def prophet_components_figure(m):
+    """Return a Matplotlib figure of Prophet components (trend/seasonality) if possible."""
+    try:
+        future = m.make_future_dataframe(periods=0)
+        fc = m.predict(future)
+        fig = m.plot_components(fc)
+        return fig
+    except Exception:
+        return None
+
+def lstm_last_window_sensitivity(model, scaler, df, sequence_length=10, steps=9, pct=0.05):
+    """
+    Simple 'what-if' for LSTM: perturb the most recent price in the last window ±pct
+    and see the next prediction response.
+    """
+    X, y, _sc = prepare_lstm_data(df, sequence_length)
+    if len(X) == 0: 
+        return None, None
+    base = X[-1].copy().reshape(sequence_length, 1)
+    # Build factors from -pct to +pct
+    factors = np.linspace(1 - pct, 1 + pct, steps)
+    preds = []
+    for f in factors:
+        perturbed = base.copy()
+        perturbed[-1, 0] = perturbed[-1, 0] * f
+        p = model.predict(perturbed.reshape(1, sequence_length, 1), verbose=0).flatten()
+        pred = scaler.inverse_transform(p.reshape(-1, 1)).flatten()[0]
+        preds.append(pred)
+    # Recover original (inverse transform of base last-step prediction for reference)
+    p0 = model.predict(base.reshape(1, sequence_length, 1), verbose=0).flatten()
+    base_pred = scaler.inverse_transform(p0.reshape(-1, 1)).flatten()[0]
+    return factors, (np.array(preds), base_pred)
+
+# ======================================================================
+
+# ---- PROPHET ADDITION ----
+def train_prophet(df, use_log=True, grid_cps=[0.01, 0.05, 0.1, 0.5]):
+    # Prepare dataframe
+    dfp = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'}).copy()
+
+    if use_log:
+        dfp['y'] = np.log1p(dfp['y'])
+
+    # Add regressors if available
+    regs = []
+    for r in ['MA_20', 'RSI', 'Volume']:
+        if r in df.columns:
+            dfp[r] = df[r].values
+            regs.append(r)
+
+    # Drop NaNs
+    dfp = dfp.dropna(subset=['y'] + regs).reset_index(drop=True)
+
+    if dfp.empty or len(dfp) < 30:
+        st.error("Not enough clean data for Prophet.")
+        return None, {}, None, None, None
+
+    # Train/test split
+    train_size = int(len(dfp) * 0.8)
+    train, test = dfp.iloc[:train_size], dfp.iloc[train_size:]
+
+    best_model, best_metrics, best_pred, best_params = None, None, None, None
+
+    # Grid search over changepoint_prior_scale
+    for cps in grid_cps:
+        try:
+            m = Prophet(
+                changepoint_prior_scale=cps,
+                yearly_seasonality=True,
+                daily_seasonality=False,
+                weekly_seasonality=True
+            )
+            for r in regs:
+                m.add_regressor(r)
+
+            m.fit(train)
+
+            # Build future frame with regressors
+            future = m.make_future_dataframe(periods=len(test), freq='D')
+            for r in regs:
+                if len(dfp) >= len(future):
+                    future[r] = dfp[r].iloc[:len(future)].values
+                else:
+                    # forward-fill last known value
+                    future[r] = pd.concat([
+                        dfp[r],
+                        pd.Series([dfp[r].iloc[-1]] * (len(future) - len(dfp)))
+                    ], ignore_index=True)
+
+            forecast = m.predict(future)
+            y_pred = forecast['yhat'].iloc[-len(test):].values
+            y_test = test['y'].values
+
+            if use_log:
+                y_pred = np.expm1(y_pred)
+                y_test = np.expm1(y_test)
+
+            metrics = {
+                "test_rmse": np.sqrt(mean_squared_error(y_test, y_pred)),
+                "test_mae": mean_absolute_error(y_test, y_pred),
+                "test_r2": r2_score(y_test, y_pred)
+            }
+
+            if (best_metrics is None) or (metrics["test_rmse"] < best_metrics["test_rmse"]):
+                best_model, best_metrics, best_pred, best_params = m, metrics, y_pred, {"cps": cps}
+
+        except Exception as e:
+            print(f"Prophet training error for cps={cps}: {e}")
+            continue
+
+    return best_model, best_metrics, best_pred, y_test, best_params
+
+def make_future_with_optional_regressors(m, history_df, periods=1):
+    """Build a future DF that satisfies any extra regressors (fill with last known values)."""
+    future = m.make_future_dataframe(periods=periods)
+
+    # If the model was trained with extra regressors, Prophet keeps them in m.extra_regressors
+    extra = getattr(m, "extra_regressors", {}) or {}
+    if extra:
+        if history_df is None:
+            raise ValueError("Model has extra regressors; pass history_df with those columns.")
+        for reg in extra.keys():
+            # Use last valid value if present, otherwise 0.0
+            last_val = (
+                pd.to_numeric(history_df.get(reg, pd.Series(dtype=float)), errors="coerce")
+                  .dropna().iloc[-1] if reg in history_df.columns else 0.0
+            )
+            future[reg] = last_val
+    return future
+
+def predict_prophet_next(m, history_df=None):
+    """Robust next-step prediction; works with or without regressors."""
+    try:
+        future = make_future_with_optional_regressors(m, history_df, periods=1)
+        fc = m.predict(future)
+        return float(fc["yhat"].iloc[-1])
+    except Exception as e:
+        st.warning(f"Prophet next prediction failed: {e}")
+        return np.nan
+
+def plot_prophet_components_safe(m):
+    """Safe wrapper for components figure; never crashes the app."""
+    try:
+        # in-sample components; future=0 so regressors are already satisfied
+        fc = m.predict(m.make_future_dataframe(periods=0))
+        return m.plot_components(fc)
+    except Exception as e:
+        st.info(f"Could not render Prophet components: {e}")
+        return None
+# --------------------------
+
+# ---- LSTM (robust) ----
+def prepare_lstm_data(df, sequence_length=10):
+    from sklearn.preprocessing import MinMaxScaler
+    # Force numeric, drop NaNs, and cast to float32 for Keras
+    close = pd.to_numeric(df['Close'], errors='coerce').dropna().values.reshape(-1, 1).astype(np.float32)
+
+    scaler = MinMaxScaler()
+    scaled = scaler.fit_transform(close)
+
+    X, y = [], []
+    for i in range(len(scaled) - sequence_length):
+        X.append(scaled[i:i + sequence_length, 0])
+        y.append(scaled[i + sequence_length, 0])
+
+    # Fixed shapes + dtypes that Keras likes
+    X = np.array(X, dtype=np.float32).reshape(-1, sequence_length, 1)
+    y = np.array(y, dtype=np.float32)
+    return X, y, scaler
+
+def train_lstm(df):
+    sequence_length = 10
+    X, y, scaler = prepare_lstm_data(df, sequence_length)
+
+    # Not enough sequences? Skip LSTM gracefully (do NOT crash app)
+    if len(X) < 30:
+        st.warning("LSTM skipped: not enough sequences for training.")
+        metrics = {
+            'train_rmse': np.nan, 'test_rmse': np.nan,
+            'train_mae': np.nan,  'test_mae': np.nan,
+            'train_r2': np.nan,   'test_r2': np.nan,
+            'train_size': 0,      'test_size': 0
+        }
+        return None, None, metrics, None, None, sequence_length
+
+    # Time-ordered split
+    split_idx = int(len(X) * 0.8)
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+
+    # Build model
+    model = Sequential()
+    model.add(LSTM(50, input_shape=(sequence_length, 1)))
+    model.add(Dense(1))
+    model.compile(optimizer=Adam(0.001), loss='mse')
+    early_stop = EarlyStopping(patience=5, restore_best_weights=True)
+
+    # Explicit validation set (avoids Keras validation_split edge cases)
+    val_len = max(1, len(X_train) // 10)
+    X_tr, X_val = X_train[:-val_len], X_train[-val_len:]
+    y_tr, y_val = y_train[:-val_len], y_train[-val_len:]
+
+    try:
+        model.fit(
+            X_tr, y_tr,
+            epochs=50, batch_size=32,
+            validation_data=(X_val, y_val),
+            callbacks=[early_stop],
+            verbose=0
+        )
+    except Exception as e:
+        # Never crash the app; surface in UI and continue
+        st.warning(f"LSTM training failed and will be skipped this run: {e}")
+        metrics = {
+            'train_rmse': np.nan, 'test_rmse': np.nan,
+            'train_mae': np.nan,  'test_mae': np.nan,
+            'train_r2': np.nan,   'test_r2': np.nan,
+            'train_size': int(X_tr.shape[0]),
+            'test_size': int(X_test.shape[0])
+        }
+        return None, None, metrics, None, None, sequence_length
+
+    # Evaluate
+    y_pred = model.predict(X_test, verbose=0).flatten()
+    y_pred_inv = scaler.inverse_transform(y_pred.reshape(-1, 1)).flatten()
+    y_test_inv = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+
+    metrics = {
+        'train_rmse': np.nan,
+        'test_rmse': float(np.sqrt(mean_squared_error(y_test_inv, y_pred_inv))),
+        'train_mae': np.nan,
+        'test_mae': float(mean_absolute_error(y_test_inv, y_pred_inv)),
+        'train_r2': np.nan,
+        'test_r2': float(r2_score(y_test_inv, y_pred_inv)),
+        'train_size': int(X_tr.shape[0]),
+        'test_size': int(X_test.shape[0])
+    }
+    return model, scaler, metrics, y_pred_inv, y_test_inv, sequence_length
+# -----------------------
+def predict_lstm_next(model, scaler, df, sequence_length=10):
+    """
+    Predict the next closing price using a trained LSTM model.
+    Uses the last `sequence_length` closes from df.
+    """
+    if model is None or scaler is None:
+        return None
+
+    # Ensure numeric close values
+    close_vals = pd.to_numeric(df['Close'], errors='coerce').dropna().values.reshape(-1, 1).astype(np.float32)
+
+    if len(close_vals) < sequence_length:
+        return None
+
+    # Take the last window
+    last_window = close_vals[-sequence_length:]
+    last_scaled = scaler.transform(last_window)
+
+    X_input = last_scaled.reshape(1, sequence_length, 1)
+
+    try:
+        y_scaled = model.predict(X_input, verbose=0).flatten()[0]
+        y_inv = scaler.inverse_transform([[y_scaled]])[0][0]
+        return float(y_inv)
+    except Exception as e:
+        st.warning(f"LSTM next-step prediction failed: {e}")
+        return None
+
+model_metrics_leaderboard = {}
+
 def main():
+
+    # --- session defaults ---
+    st.session_state.setdefault("prophet_model", None)
+    st.session_state.setdefault("model_metrics_leaderboard", {})
+    # --- locals to avoid UnboundLocalError when branches don't run ---
+    m = None
+    rf_model = None
+    lstm_model = None
+    scaler = None
+
     # Title and description
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
     st.markdown(
@@ -687,33 +1105,58 @@ def main():
     unsafe_allow_html=True
     )
 
-    # Initialize variables (🔑 init once here)
-    df, current_price = None, None
-    volatility = None
-    current_price_val = None
-    currency_symbol = '$'
-
+    # Show yfinance availability warning if needed
+    if not YFINANCE_AVAILABLE:
+        st.warning("⚠️ yfinance not installed. Only Alpha Vantage will be used.")
+    
     # API Status Check
     with st.expander("🔍 API Status Check", expanded=False):
-        if st.button("🔄 Test API Connections", type="primary"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔄 Test API Connections", type="primary"):
+                api_test_clicked = True
+            else:
+                api_test_clicked = False
+        
+        with col2:
+            if st.button("🗑️ Clear Data Cache", type="secondary", help="Clear cached data to force fresh API calls"):
+                st.cache_data.clear()
+                st.success("✅ Data cache cleared! Try fetching data again.")
+        
+        if api_test_clicked:
             with st.spinner("Testing API connections..."):
                 api_status = test_api_connections()
             
-            col1, col2 = st.columns(2)
+            col1_status, col2_status = st.columns(2)
             
-            with col1:
+            with col1_status:
                 st.subheader("📊 yfinance Status")
                 if api_status['yfinance']['working']:
                     st.markdown(f'<div class="api-status api-working">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f'<div class="api-status api-failed">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
             
-            with col2:
+            with col2_status:
                 st.subheader("🔑 Alpha Vantage Status")
                 if api_status['alpha_vantage']['working']:
                     st.markdown('<div class="api-status api-working">✅ Alpha Vantage is working</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
+
+    
+    # Initialize variables (🔑 init once here)
+    df, current_price = None, None
+    volatility = None
+    current_price_val = None
+    currency_symbol = '$'
+
+    # --- Session state init ---
+    if "predict_clicked" not in st.session_state:
+        st.session_state.predict_clicked = False
+
+    if "model_metrics_leaderboard" not in st.session_state:
+        st.session_state.model_metrics_leaderboard = None
 
     # Sidebar for inputs
     with st.sidebar:
@@ -791,11 +1234,15 @@ def main():
         
         st.sidebar.markdown("### 🤖 Select Models for Forecasting")
 
-        model_choices = st.sidebar.multiselect(
-            "Choose the models:",
-            ["Prophet", "LSTM", "Random Forest",],
-            default=["Random Forest"]  # or [] if you want none pre-selected
-        )
+        # =============== RECOMMENDED: Model SELECTORS and METRIC COLLECTOR ==============
+        model_choices = ['Random Forest']
+        if PROPHET_AVAILABLE:
+            model_choices.append("Prophet")
+        if LSTM_AVAILABLE:
+            model_choices.append("LSTM")
+
+        selected_model = st.selectbox("Select Model", model_choices)
+        model_metrics_leaderboard = {}
 
         # Time period selection
         st.markdown("#### 📅 Time Period")
@@ -810,22 +1257,31 @@ def main():
         st.markdown("#### 🔮 Prediction Settings")
         prediction_days = st.slider("Days to Predict", 1, 30, 7, help="Number of days to predict into the future")
         
+        # Reset prediction state if inputs change
+        if "last_config" not in st.session_state:
+            st.session_state.last_config = (None, None, None)
+
+        current_config = (ticker, selected_model, period)
+
+        if current_config != st.session_state.last_config:
+            st.session_state.predict_clicked = False
+            st.session_state.last_config = current_config
+
         # Action button
-        predict_button = st.button("🚀 Predict Stock Price", type="primary", use_container_width=True)
+        if st.button("🚀 Predict Stock Price", type="primary", use_container_width=True):
+            st.session_state.predict_clicked = True
 
     # Main content area
-    if predict_button:
-        if not ticker:
-            st.error("Please enter a stock ticker symbol!")
-            return
+    if st.session_state.predict_clicked:
         
         # Create tabs for different views
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📊 Stock Analysis", 
             "🔮 Predictions", 
             "📈 Charts", 
             "🤖 Model Performance", 
-            "📋 Data Table"
+            "📋 Data Table",
+            "🏆 Leaderboard & Risk"
         ])
         
         # Fetch stock data depending on user choice
@@ -863,6 +1319,30 @@ def main():
         # Process the data
         data_source = df.attrs.get('source', used_source)
         df = process_stock_data(df, ticker, data_source)
+
+        if selected_model == "Random Forest":
+            model, scaler, metrics, feat_imp = train_model(df)
+            prediction = predict_next_price(model, scaler, df)
+            metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            model_metrics_leaderboard["Random Forest"] = metrics
+        elif selected_model == "Prophet" and PROPHET_AVAILABLE:
+            m, metrics, pred, y_test, best_params = train_prophet(df)
+            st.session_state["prophet_model"] = m
+            pm = st.session_state.get("prophet_model")
+            if pm is not None:
+                next_pred = predict_prophet_next(pm, df)  # df only needed if you trained with extra regressors
+            else:
+                next_pred = np.nan
+            metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            prediction = next_pred
+            model_metrics_leaderboard["Prophet"] = metrics
+        elif selected_model == "LSTM" and LSTM_AVAILABLE:
+            model, scaler, metrics, y_pred_inv, y_test_inv, seq_len = train_lstm(df)
+            prediction = predict_lstm_next(model, scaler, df, seq_len)
+            metrics["sharpe"] = calculate_sharpe_ratio(df["Close"])
+            model_metrics_leaderboard["LSTM"] = metrics
+        else:
+            prediction = None
 
         if df is None or df.empty:
             st.error("❌ Unable to process stock data. Please try again.")
@@ -1232,6 +1712,106 @@ def main():
                         yaxis={'categoryorder':'total ascending'}
                     )
                     st.plotly_chart(fig_importance, use_container_width=True)
+
+                    # ===================== 🧩 Explainable AI =====================
+                    st.markdown("### 🧩 Explainable AI")
+
+                    if selected_model == "Random Forest" and (model is not None) and (scaler is not None):
+                        # 1) Global drivers via Permutation Importance
+                        with st.expander("🌍 Global Drivers (Permutation Importance)", expanded=True):
+                            try:
+                                imp_df, X_test, y_test, feat_names, X_test_scaled = rf_permutation_importance(model, scaler, df)
+                                fig_pi = px.bar(
+                                    imp_df.head(12),
+                                    x="importance", y="feature", orientation="h",
+                                    title="Permutation Importance (Top 12)", color="importance",
+                                    color_continuous_scale="viridis", template="plotly_white"
+                                )
+                                fig_pi.update_layout(yaxis={'categoryorder':'total ascending'})
+                                st.plotly_chart(fig_pi, use_container_width=True)
+                            except Exception as e:
+                                st.warning(f"Could not compute permutation importance: {e}")
+
+                        # 2) SHAP (if installed) – global & local
+                        with st.expander("🔎 Local & Global Explanations (SHAP)", expanded=False):
+                            global_df, local_df = rf_shap_global_local(model, X_test_scaled, feat_names)
+                            if global_df is not None and local_df is not None:
+                                st.write("**Global (mean |SHAP|)** – which features drive predictions overall:")
+                                st.dataframe(global_df.head(12), use_container_width=True)
+
+                                st.write("**Local (last test point)** – feature contributions to the last prediction:")
+                                st.dataframe(local_df.head(12), use_container_width=True)
+                            else:
+                                st.info("SHAP not available. Install `shap` for richer explanations. Falling back to What-if analysis below.")
+
+                        # 3) What-if curves for top features
+                        with st.expander("🧪 What-if Analysis (Top Drivers)", expanded=True):
+                            try:
+                                # Pick top 3 by permutation importance
+                                if 'imp_df' not in locals():
+                                    imp_df, X_test, y_test, feat_names, X_test_scaled = rf_permutation_importance(model, scaler, df)
+                                top_feats = imp_df['feature'].head(3).tolist()
+                                curves = rf_whatif_curves(model, scaler, df, top_feats, points=15)
+                                base_close = float(df['Close'].iloc[-1]) if 'Close' in df.columns else None
+                                for feat, (grid, preds) in curves.items():
+                                    fig_wi = go.Figure()
+                                    fig_wi.add_trace(go.Scatter(x=grid, y=preds, mode='lines+markers', name='Predicted Price'))
+                                    fig_wi.update_layout(
+                                        title=f"What-if: vary '{feat}' and observe predicted price",
+                                        xaxis_title=f"{feat} (quantiles of train data)",
+                                        yaxis_title="Predicted Close",
+                                        template="plotly_white"
+                                    )
+                                    st.plotly_chart(fig_wi, use_container_width=True)
+                                if base_close is not None:
+                                    st.caption(f"Reference: last actual close ≈ {base_close:.2f}")
+                            except Exception as e:
+                                st.warning(f"What-if curves unavailable: {e}")
+
+                    elif selected_model == "Prophet" and PROPHET_AVAILABLE and ('m' in locals()) and (m is not None):
+                        with st.expander("📆 Prophet Components (Trend / Seasonality)", expanded=True):
+                            fig_comp = prophet_components_figure(m)
+                            if fig_comp is not None:
+                                st.pyplot(fig_comp, use_container_width=True)
+                            else:
+                                st.info("Could not render Prophet components.")
+
+                    elif selected_model == "LSTM" and LSTM_AVAILABLE and ('model' in locals()) and (model is not None):
+                        with st.expander("🧪 LSTM What-if (last window sensitivity)", expanded=True):
+                            try:
+                                # Make sure this is a Keras LSTM model
+                                if "keras" not in str(type(model)):
+                                    st.info("LSTM model not available or not a Keras model in this run.")
+                                else:
+                                    factors, (preds, base_pred) = lstm_last_window_sensitivity(
+                                        model, scaler, df, sequence_length=10, steps=9, pct=0.05
+                                    )
+                                    if factors is not None:
+                                        x_vals = (factors - 1.0) * 100.0  # % perturbation
+                                        fig_lstm = go.Figure()
+                                        fig_lstm.add_trace(go.Scatter(
+                                            x=x_vals, y=preds,
+                                            mode='lines+markers', name='Predicted Next Close'
+                                        ))
+                                        fig_lstm.add_hline(
+                                            y=base_pred, line_dash="dash",
+                                            annotation_text=f"Base prediction ≈ {base_pred:.2f}"
+                                        )
+                                        fig_lstm.update_layout(
+                                            title="LSTM What-if: perturb most recent input (%) and observe next prediction",
+                                            xaxis_title="Perturbation of last input (%)",
+                                            yaxis_title="Predicted Next Close",
+                                            template="plotly_white"
+                                        )
+                                        st.plotly_chart(fig_lstm, use_container_width=True)
+                                    else:
+                                        st.info("Not enough data for LSTM sensitivity.")
+                            except Exception as e:
+                                st.warning(f"LSTM what-if unavailable: {e}")
+                            else:
+                                st.info("Explainability is available for Random Forest by default. Select RF in the sidebar to see full XAI.")
+                    
+                    # ==============================================================
                     
                     # Feature explanation
                     st.info("""
@@ -1340,6 +1920,52 @@ def main():
                         st.write("- Volatility: Data not available")
                 except Exception:
                     st.write("- Volatility: Data not available")
+            
+            
+            # ============ TAB 6: Leaderboard & Risk (ONLY HERE) ============
+
+        with tab6:
+            st.header("Model Leaderboard & Risk Metrics")
+
+            if st.button("Evaluate All Models"):
+                leaderboard_metrics = {}
+
+                # Random Forest
+                mdl, sclr, met, _ = train_model(df)
+                met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                leaderboard_metrics["Random Forest"] = met
+
+                # Prophet
+                if PROPHET_AVAILABLE:
+                    pm = st.session_state.get("prophet_model")
+
+                if PROPHET_AVAILABLE and pm is not None:
+                    with st.expander("📆 Prophet Components (Trend / Seasonality)", expanded=True):
+                        fig_comp = plot_prophet_components_safe(pm)
+                        if fig_comp is not None:
+                            st.pyplot(fig_comp, use_container_width=True)
+                        else:
+                            st.info("Could not render Prophet components.")
+                else:
+                    st.info("Prophet components unavailable: model not trained yet.")
+
+                # LSTM
+                if LSTM_AVAILABLE:
+                    mdl, sclr, met, _, _, seq_len = train_lstm(df)
+                    met["sharpe"] = calculate_sharpe_ratio(df["Close"])
+                    leaderboard_metrics["LSTM"] = met
+
+                # persist across reruns
+                st.session_state.model_metrics_leaderboard = leaderboard_metrics
+
+            if st.session_state.model_metrics_leaderboard:
+                leaderboard_df = pd.DataFrame(st.session_state.model_metrics_leaderboard).T
+                st.dataframe(
+                    leaderboard_df[["test_rmse","test_mae","test_r2","sharpe"]]
+                    .style.format({'test_rmse':'{:.2f}','test_mae':'{:.2f}','test_r2':'{:.2f}','sharpe':'{:.2f}'})
+                )
+            else:
+                st.info("Evaluate a model or click 'Evaluate All Models' to show leaderboard metrics.")
         
         # Warning disclaimer
         st.markdown("""
@@ -1361,7 +1987,6 @@ def main():
             and may fall back to sample data for demonstration when live APIs are unavailable.
         </div>
         """, unsafe_allow_html=True)
-    
     else:
         # Welcome screen
         st.markdown(
@@ -1440,9 +2065,9 @@ def main():
             """,
             unsafe_allow_html=True
 )
+    
 
 if __name__ == "__main__":
     main()
-
 
 
