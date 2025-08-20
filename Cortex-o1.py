@@ -37,12 +37,11 @@ st.set_page_config(
 
 # Clean White Theme CSS
 st.markdown("""
-    <style>
-        /* Import Google Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        /* Headers and Text */
-        .main-header {
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+
+            .main-header {
             font-size: 3.5rem;
             font-weight: 700;
             background: linear-gradient(45deg, #1f77b4, #ff7f0e);
@@ -52,47 +51,50 @@ st.markdown("""
             text-align: center;
             margin-bottom: 1rem;
             font-family: 'Inter', sans-serif;
-        }
-        
-        .subtitle {
+            }
+
+
+            .subtitle {
             text-align: center;
             font-size: 1.3rem;
             color: #666;
             margin-bottom: 3rem;
             font-weight: 300;
-        }
-        
-        /* Warning Card */
-        .warning-card {
+            }
+
+
+            .warning-card {
             background: #000000;
             padding: 1.5rem;
             border-radius: 8px;
             border: 1px solid #ffeaa7;
             margin-top: 2rem;
             border-left: 4px solid #fdcb6e;
-        }
-        
-        /* Status Indicators */
-        .api-status {
+            }
+
+
+            .api-status {
             padding: 1rem;
             border-radius: 8px;
             margin: 1rem 0;
-        }
-        
-        .api-working {
+            }
+
+
+            .api-working {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
-        }
-        
-        .api-failed {
+            }
+
+
+            .api-failed {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
-        }
-        
-        /* Buttons */
-        .stButton > button {
+            }
+
+
+            .stButton > button {
             background: linear-gradient(45deg, #1f77b4, #ff7f0e);
             color: white;
             border: none;
@@ -102,91 +104,31 @@ st.markdown("""
             font-size: 1rem;
             transition: all 0.3s ease;
             width: 100%;
-        }
-        
-        .stButton > button:hover {
+            }
+
+
+            .stButton > button:hover {
             background: linear-gradient(45deg, #1565c0, #f57c00);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        /* Hide Streamlit branding */
-        #MainMenu {visibility: visible;}
-        footer {visibility: visible;}
-        header {visibility: visible;}
-            
-        /* Sidebar text fix */
-        section[data-testid="stSidebar"] {
-            background: #f9f9f9;
-            color: #000000;
-        }
-        section[data-testid="stSidebar"] * {
+            }
+
+
+            #MainMenu {visibility: visible;}
+            footer {visibility: visible;}
+            header {visibility: visible;}
+
+
+            section[data-testid="stSidebar"] {
+            background: #f9f9f9 !important;
             color: #000000 !important;
-        }
-        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {
-            color: #000000 !important;
-        }
-        
-
-        /* ✅ Make the whole sidebar light */
-        section[data-testid="stSidebar"]{
-        background:#f9f9f9 !important;
-        color:#000 !important;
-
-        /* Override Streamlit theme variables (sidebar scope only) */
-        --background-color:#f9f9f9;
-        --secondary-background-color:#ffffff; /* widgets like selectbox */
-        --text-color:#000000;
-        --font-color:#000000;
-        --border-color:#DDDDDD;
-        }
-
-        /* Ensure all text/icons in sidebar are dark */
-        section[data-testid="stSidebar"] *{
-        color:#000 !important;
-        fill:#000 !important;
-        }
-
-        /* ✅ Selectbox control (BaseWeb) – make the control white */
-        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
-        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div{
-        background:#ffffff !important;
-        border:1px solid #ddd !important;
-        border-radius:8px !important;
-        }
-
-        /* Value/placeholder text inside the control */
-        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] *{
-        color:#000 !important;
-        }
-
-        /* Arrow/clear icons */
-        section[data-testid="stSidebar"] .stSelectbox svg{
-        color:#000 !important;
-        fill:#000 !important;
-        }
-
-        /* ✅ Dropdown menu (rendered in a portal – target globally) */
-        div[role="listbox"], ul[role="listbox"]{
-        background:#ffffff !important;
-        color:#000000 !important;
-        border:1px solid #ddd !important;
-        border-radius:8px !important;
-        }
-        li[role="option"]{ color:#000 !important; }
-        li[role="option"][aria-selected="true"],
-        li[role="option"]:hover{ background:#f0f0f0 !important; }
-
-        /* (Optional) Make other sidebar inputs white too */
-        section[data-testid="stSidebar"] .stTextInput > div > div,
-        section[data-testid="stSidebar"] .stNumberInput > div > div,
-        section[data-testid="stSidebar"] .stDateInput > div > div{
-        background:#ffffff !important;
-        border:1px solid #ddd !important;
-        border-radius:8px !important;
-        }
-            
-    </style>
+            --background-color:#f9f9f9;
+            --secondary-background-color:#ffffff;
+            --text-color:#000000;
+            --font-color:#000000;
+            --border-color:#DDDDDD;
+            }
+        </style>
 """, unsafe_allow_html=True)
 
 # Enhanced stock tickers
@@ -291,28 +233,30 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
         yf_period = yf_period_map.get(period, '1y')
 
-        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=True)
+        df = yf.download(
+            ticker_mapped,
+            period=yf_period,
+            interval="1d",
+            auto_adjust=True,  # ✅ Fix applied
+            progress=False
+        )
+
         if df.empty:
+            st.error(f"yfinance returned empty data for {ticker_mapped}")
             return None
 
         df.reset_index(inplace=True)
-
-        # Ensure Date is datetime
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
 
-        # Ensure 'Close' exists even if only 'Adj Close' was returned
         if 'Close' not in df.columns and 'Adj Close' in df.columns:
             df['Close'] = df['Adj Close']
 
         df = df[['Date','Open','High','Low','Close','Volume']]
-        df['Date'] = pd.to_datetime(df['Date'])
         df.attrs = {'source':'yfinance','ticker':ticker_mapped}
         return df
     except Exception as e:
-        st.error(f"yfinance fetch error: {e}")
+        st.error(f"yfinance fetch error: {str(e)}")
         return None
-
-
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_unified(ticker, period="1y"):
