@@ -707,6 +707,39 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
         pass
     st.write(f"- {label}: Data not available")
 
+def connectivity_debug_tab():
+    st.header("🔍 Connectivity Debug")
+
+    if st.button("🌐 Test Yahoo Finance Website"):
+        try:
+            r = requests.get("https://finance.yahoo.com", timeout=5)
+            st.write("Status code:", r.status_code)
+            if r.status_code == 200:
+                st.success("✅ Yahoo Finance reachable.")
+            else:
+                st.error("❌ Yahoo Finance not reachable.")
+        except Exception as e:
+            st.error(f"❌ Request failed: {e}")
+
+    if st.button("⏰ Check System Clock"):
+        utc_now = datetime.datetime.utcnow()
+        epoch = time.time()
+        st.write("UTC now:", utc_now)
+        st.write("Epoch timestamp:", epoch)
+        st.info("👉 Verify that this shows today's correct date/time.")
+
+    if st.button("📊 Quick yfinance Test (AAPL, 5d)"):
+        try:
+            import yfinance as yf
+            df = yf.download("AAPL", period="5d")
+            if df is not None and not df.empty:
+                st.success(f"✅ yfinance returned {len(df)} rows.")
+                st.dataframe(df)
+            else:
+                st.error("❌ yfinance returned empty DataFrame.")
+        except Exception as e:
+            st.error(f"❌ yfinance test failed: {e}")
+
 # ======================== NEW METRIC FUNCTION ========================
 def calculate_sharpe_ratio(series, risk_free_rate=0.0):
     if series is None or len(series) < 2:
@@ -1249,13 +1282,14 @@ def main():
     if st.session_state.predict_clicked:
         
         # Create tabs for different views
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📊 Stock Analysis", 
             "🔮 Predictions", 
             "📈 Charts", 
             "🤖 Model Performance", 
             "📋 Data Table",
-            "🏆 Leaderboard & Risk"
+            "🏆 Leaderboard & Risk",
+            "   Debug"
         ])
         
         # Fetch stock data depending on user choice
@@ -1941,6 +1975,9 @@ def main():
             else:
                 st.info("Evaluate a model or click 'Evaluate All Models' to show leaderboard metrics.")
         
+        with tab7:
+            connectivity_debug_tab()
+
         # Warning disclaimer
         st.markdown("""
         <div class="warning-card">
