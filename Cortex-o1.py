@@ -24,7 +24,13 @@ except ImportError:
     st.warning("⚠️ yfinance not installed. Only Alpha Vantage will be used.")
 
 # Alpha Vantage Configuration
-ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
+try:
+    ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
+    ALPHA_VANTAGE_AVAILABLE = True if ALPHA_VANTAGE_API_KEY and ALPHA_VANTAGE_API_KEY != "demo" else False
+except:
+    ALPHA_VANTAGE_API_KEY = None
+    ALPHA_VANTAGE_AVAILABLE = False
+    
 AV_BASE_URL = 'https://www.alphavantage.co/query'
 
 # Page configuration
@@ -37,11 +43,12 @@ st.set_page_config(
 
 # Clean White Theme CSS
 st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-
-            .main-header {
+    <style>
+        /* Import Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        /* Headers and Text */
+        .main-header {
             font-size: 3.5rem;
             font-weight: 700;
             background: linear-gradient(45deg, #1f77b4, #ff7f0e);
@@ -51,50 +58,47 @@ st.markdown("""
             text-align: center;
             margin-bottom: 1rem;
             font-family: 'Inter', sans-serif;
-            }
-
-
-            .subtitle {
+        }
+        
+        .subtitle {
             text-align: center;
             font-size: 1.3rem;
             color: #666;
             margin-bottom: 3rem;
             font-weight: 300;
-            }
-
-
-            .warning-card {
+        }
+        
+        /* Warning Card */
+        .warning-card {
             background: #000000;
             padding: 1.5rem;
             border-radius: 8px;
             border: 1px solid #ffeaa7;
             margin-top: 2rem;
             border-left: 4px solid #fdcb6e;
-            }
-
-
-            .api-status {
+        }
+        
+        /* Status Indicators */
+        .api-status {
             padding: 1rem;
             border-radius: 8px;
             margin: 1rem 0;
-            }
-
-
-            .api-working {
+        }
+        
+        .api-working {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
-            }
-
-
-            .api-failed {
+        }
+        
+        .api-failed {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
-            }
-
-
-            .stButton > button {
+        }
+        
+        /* Buttons */
+        .stButton > button {
             background: linear-gradient(45deg, #1f77b4, #ff7f0e);
             color: white;
             border: none;
@@ -104,31 +108,91 @@ st.markdown("""
             font-size: 1rem;
             transition: all 0.3s ease;
             width: 100%;
-            }
-
-
-            .stButton > button:hover {
+        }
+        
+        .stButton > button:hover {
             background: linear-gradient(45deg, #1565c0, #f57c00);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            }
-
-
-            #MainMenu {visibility: visible;}
-            footer {visibility: visible;}
-            header {visibility: visible;}
-
-
-            section[data-testid="stSidebar"] {
-            background: #f9f9f9 !important;
+        }
+        
+        /* Hide Streamlit branding */
+        #MainMenu {visibility: visible;}
+        footer {visibility: visible;}
+        header {visibility: visible;}
+            
+        /* Sidebar text fix */
+        section[data-testid="stSidebar"] {
+            background: #f9f9f9;
+            color: #000000;
+        }
+        section[data-testid="stSidebar"] * {
             color: #000000 !important;
-            --background-color:#f9f9f9;
-            --secondary-background-color:#ffffff;
-            --text-color:#000000;
-            --font-color:#000000;
-            --border-color:#DDDDDD;
-            }
-        </style>
+        }
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {
+            color: #000000 !important;
+        }
+        
+
+        /* ✅ Make the whole sidebar light */
+        section[data-testid="stSidebar"]{
+        background:#f9f9f9 !important;
+        color:#000 !important;
+
+        /* Override Streamlit theme variables (sidebar scope only) */
+        --background-color:#f9f9f9;
+        --secondary-background-color:#ffffff; /* widgets like selectbox */
+        --text-color:#000000;
+        --font-color:#000000;
+        --border-color:#DDDDDD;
+        }
+
+        /* Ensure all text/icons in sidebar are dark */
+        section[data-testid="stSidebar"] *{
+        color:#000 !important;
+        fill:#000 !important;
+        }
+
+        /* ✅ Selectbox control (BaseWeb) – make the control white */
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div{
+        background:#ffffff !important;
+        border:1px solid #ddd !important;
+        border-radius:8px !important;
+        }
+
+        /* Value/placeholder text inside the control */
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] *{
+        color:#000 !important;
+        }
+
+        /* Arrow/clear icons */
+        section[data-testid="stSidebar"] .stSelectbox svg{
+        color:#000 !important;
+        fill:#000 !important;
+        }
+
+        /* ✅ Dropdown menu (rendered in a portal – target globally) */
+        div[role="listbox"], ul[role="listbox"]{
+        background:#ffffff !important;
+        color:#000000 !important;
+        border:1px solid #ddd !important;
+        border-radius:8px !important;
+        }
+        li[role="option"]{ color:#000 !important; }
+        li[role="option"][aria-selected="true"],
+        li[role="option"]:hover{ background:#f0f0f0 !important; }
+
+        /* (Optional) Make other sidebar inputs white too */
+        section[data-testid="stSidebar"] .stTextInput > div > div,
+        section[data-testid="stSidebar"] .stNumberInput > div > div,
+        section[data-testid="stSidebar"] .stDateInput > div > div{
+        background:#ffffff !important;
+        border:1px solid #ddd !important;
+        border-radius:8px !important;
+        }
+            
+    </style>
 """, unsafe_allow_html=True)
 
 # Enhanced stock tickers
@@ -168,31 +232,13 @@ RELIABLE_TICKERS = {
 
 
 def map_ticker_for_source(ticker: str, source: str) -> str:
-    """
-    Map tickers depending on data source.
-    - yfinance: NSE stocks need '.NS', US/global stocks stay unchanged.
-    - alpha_vantage: expects '.BSE' for Indian stocks, plain for US/global.
-    """
     base = ticker.split('.')[0].upper()
-    # NSE stock list used in your app
-    nse_list = [
-                "RELIANCE", # Reliance Industries
-                "TCS", # Tata Consultancy Services
-                "INFY", # Infosys
-                "HDFCBANK", # HDFC Bank
-                "ICICIBANK", # ICICI Bank
-                "SBIN", # State Bank of India
-                "KOTAKBANK", # Kotak Mahindra Bank
-                "AXISBANK", # Axis Bank
-                "LT", # Larsen & Toubro
-                "HINDUNILVR" # Hindustan Unilever
-                ]
     if source == "yfinance":
-        if base in nse_list:
+        if ticker.endswith(".NSE"):
             return base + ".NS"
         return base
     if source == "alpha_vantage":
-        if base in nse_list:
+        if ticker.endswith(".NSE"):
             return base + ".BSE"
         return base
     return ticker
@@ -220,27 +266,30 @@ def test_api_connections():
         status['yfinance']['message'] = "❌ yfinance not installed"
     
     # Test Alpha Vantage
-    try:
-        params = {
-            'function': 'TIME_SERIES_DAILY',
-            'symbol': 'AAPL',
-            'apikey': ALPHA_VANTAGE_API_KEY,
-            'outputsize': 'compact'
-        }
-        response = requests.get(AV_BASE_URL, params=params, timeout=15)
-        data = response.json()
-        
-        if 'Time Series (Daily)' in data:
-            status['alpha_vantage']['working'] = True
-            status['alpha_vantage']['message'] = "✅ Alpha Vantage is working"
-        elif 'Note' in data or 'Information' in data:
-            status['alpha_vantage']['message'] = "⚠️ Alpha Vantage rate limit exceeded"
-        elif 'Error Message' in data:
-            status['alpha_vantage']['message'] = f"❌ Alpha Vantage error: {data['Error Message']}"
-        else:
-            status['alpha_vantage']['message'] = "❌ Unknown Alpha Vantage response"
-    except Exception as e:
-        status['alpha_vantage']['message'] = f"❌ Alpha Vantage connection failed: {str(e)[:50]}..."
+    if not ALPHA_VANTAGE_AVAILABLE or not ALPHA_VANTAGE_API_KEY:
+        status['alpha_vantage']['message'] = "❌ Alpha Vantage API key not configured"
+    else:
+        try:
+            params = {
+                'function': 'TIME_SERIES_DAILY',
+                'symbol': 'AAPL',
+                'apikey': ALPHA_VANTAGE_API_KEY,
+                'outputsize': 'compact'
+            }
+            response = requests.get(AV_BASE_URL, params=params, timeout=15)
+            data = response.json()
+            
+            if 'Time Series (Daily)' in data:
+                status['alpha_vantage']['working'] = True
+                status['alpha_vantage']['message'] = "✅ Alpha Vantage is working"
+            elif 'Note' in data or 'Information' in data:
+                status['alpha_vantage']['message'] = "⚠️ Alpha Vantage rate limit exceeded"
+            elif 'Error Message' in data:
+                status['alpha_vantage']['message'] = f"❌ Alpha Vantage error: {data['Error Message']}"
+            else:
+                status['alpha_vantage']['message'] = "❌ Unknown Alpha Vantage response"
+        except Exception as e:
+            status['alpha_vantage']['message'] = f"❌ Alpha Vantage connection failed: {str(e)[:50]}..."
     
     return status
 
@@ -248,50 +297,80 @@ def test_api_connections():
 def fetch_stock_data_yfinance(ticker, period="1y"):
     try:
         ticker_mapped = map_ticker_for_source(ticker, "yfinance")
+        yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
+        yf_period = yf_period_map.get(period, '1y')
+
+        # Download data with proper error handling
+        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False, progress=False)
         
-        # Always ensure US tickers (AAPL, MSFT, etc.) are not suffixed
-        if ticker_mapped.endswith(".NSE") and not ticker.endswith(".NSE"):
-            ticker_mapped = ticker  # fallback to plain ticker for US stocks
-
-        df = yf.download(
-            ticker_mapped,
-            period=period,
-            interval="1d",
-            auto_adjust=True,
-            threads=False,
-            progress=False
-        )
-
-        # Retry with start/end if empty
-        if df.empty:
-            end = datetime.now()
-            start = end - timedelta(days=365)
-            df = yf.download(
-                ticker_mapped,
-                start=start.strftime("%Y-%m-%d"),
-                end=end.strftime("%Y-%m-%d"),
-                interval="1d",
-                auto_adjust=True,
-                threads=False,
-                progress=False
-            )
-
-        if df.empty:
-            st.error(f"⚠️ yfinance returned empty data for {ticker_mapped}")
+        if df is None or df.empty:
+            st.warning(f"No data returned from yfinance for {ticker_mapped}")
             return None
 
         df.reset_index(inplace=True)
-        if "Close" not in df.columns and "Adj Close" in df.columns:
-            df["Close"] = df["Adj Close"]
+        
+        # Handle multi-level columns that yfinance sometimes returns
+        if isinstance(df.columns, pd.MultiIndex):
+            # Flatten multi-level columns - take the first level for multi-level columns
+            df.columns = [col[0] if col[1] == '' or pd.isna(col[1]) else col[0] for col in df.columns.values]
+        
+        # Clean up column names (remove any extra spaces)
+        df.columns = [str(col).strip() for col in df.columns]
+        
+        # Ensure Date is datetime
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        else:
+            st.error(f"Date column not found in yfinance data for {ticker}")
+            return None
 
-        return df[["Date", "Open", "High", "Low", "Close", "Volume"]]
-
+        # Ensure 'Close' exists even if only 'Adj Close' was returned
+        if 'Close' not in df.columns and 'Adj Close' in df.columns:
+            df['Close'] = df['Adj Close']
+        
+        # Validate that we have the minimum required data
+        if 'Close' not in df.columns:
+            st.error(f"Close price data not available for {ticker}")
+            return None
+            
+        # Select required columns (only those that exist)
+        required_cols = ['Date','Open','High','Low','Close','Volume']
+        available_cols = [col for col in required_cols if col in df.columns]
+        
+        if len(available_cols) < 2:  # At least Date and Close
+            st.error(f"Insufficient data columns available for {ticker}. Found: {available_cols}")
+            return None
+            
+        df = df[available_cols]
+        
+        # Final data validation
+        if df['Date'].isna().any():
+            df = df.dropna(subset=['Date'])
+            
+        if df.empty:
+            st.error(f"No valid data remaining after processing for {ticker}")
+            return None
+            
+        # Ensure proper data types
+        df['Date'] = pd.to_datetime(df['Date'])
+        for col in ['Open','High','Low','Close','Volume']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
+        return df
+        
     except Exception as e:
-        st.error(f"yfinance fetch error: {str(e)}")
+        st.error(f"yfinance fetch error for {ticker}: {str(e)}")
         return None
+
+
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_unified(ticker, period="1y"):
+    if not ALPHA_VANTAGE_AVAILABLE or not ALPHA_VANTAGE_API_KEY:
+        return None
+        
     try:
         mapped_ticker = map_ticker_for_source(ticker, "alpha_vantage")
         time.sleep(1)
@@ -466,19 +545,56 @@ def process_stock_data(df, ticker, source):
     if 'Date' not in df.columns and df.index.name == 'Date':
         df = df.reset_index()
     
-    # Add technical indicators
-    df['MA_20'] = df['Close'].rolling(window=20).mean()
-    df['MA_50'] = df['Close'].rolling(window=50).mean()
-    df['RSI'] = calculate_rsi(df['Close'])
+    # Check if we have enough data points
+    min_data_points = 60  # Minimum for 50-day MA plus some buffer
+    data_length = len(df)
+    
+    # Add technical indicators based on available data
+    # Always add these basic indicators
     df['Price_Change'] = df['Close'].pct_change()
-    df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
+    
+    if 'Volume' in df.columns:
+        df['Volume_MA'] = df['Volume'].rolling(window=min(10, max(2, data_length//5))).mean()
+    
+    # Add moving averages only if we have sufficient data
+    if data_length >= 20:
+        df['MA_20'] = df['Close'].rolling(window=20).mean()
+    else:
+        # Use shorter MA if not enough data for 20-day
+        window = max(5, data_length//3)
+        df['MA_20'] = df['Close'].rolling(window=window).mean()
+    
+    if data_length >= 50:
+        df['MA_50'] = df['Close'].rolling(window=50).mean()
+    else:
+        # Use adaptive window size
+        window = max(10, data_length//2)
+        df['MA_50'] = df['Close'].rolling(window=window).mean()
+    
+    # RSI with adaptive window
+    rsi_window = min(14, max(7, data_length//4))
+    df['RSI'] = calculate_rsi(df['Close'], window=rsi_window)
     
     # Add lag features
-    for i in [1, 2, 3, 5]:
+    max_lag = min(5, data_length//4)  # Don't use lags that consume too much data
+    for i in range(1, max_lag + 1):
         df[f'Close_Lag_{i}'] = df['Close'].shift(i)
     
-    # Remove rows with NaN values
+    # Remove rows with NaN values but ensure we keep some data
+    initial_length = len(df)
     df = df.dropna()
+    final_length = len(df)
+    
+    # If we lost too much data, use minimal processing
+    if final_length < max(10, initial_length * 0.3):  # Keep at least 30% of data or 10 rows
+        st.warning(f"Limited data available for {ticker}. Using basic indicators only.")
+        # Return the original data with minimal processing to preserve more data points
+        return df  # Use the data we have, even if it has fewer indicators
+    
+    # Final validation
+    if df.empty or len(df) < 5:
+        st.warning(f"Insufficient data after processing for {ticker}. Using minimal processing.")
+        return None
     
     # Add metadata
     df.attrs = {
@@ -491,21 +607,51 @@ def process_stock_data(df, ticker, source):
 
 def prepare_features(df):
     """Prepare features for machine learning"""
-    feature_columns = [
-        'Open', 'High', 'Low', 'Volume', 'MA_20', 'MA_50', 'RSI',
-        'Price_Change', 'Volume_MA'
-    ]
+    # Base features that should always be available
+    base_features = ['Open', 'High', 'Low']
     
-    # Add lag features
-    for i in [1, 2, 3, 5]:
-        if f'Close_Lag_{i}' in df.columns:
-            feature_columns.append(f'Close_Lag_{i}')
+    # Optional features that might not always be present
+    optional_features = ['Volume', 'MA_20', 'MA_50', 'RSI', 'Price_Change', 'Volume_MA']
+    
+    # Alternative features for when standard ones aren't available
+    alternative_features = ['MA_10']  # From our adaptive processing
+    
+    feature_columns = []
+    
+    # Add base features (these should always exist)
+    for col in base_features:
+        if col in df.columns:
+            feature_columns.append(col)
+    
+    # Add optional features if available
+    for col in optional_features:
+        if col in df.columns:
+            feature_columns.append(col)
+    
+    # Add alternative features if available
+    for col in alternative_features:
+        if col in df.columns and col not in feature_columns:
+            feature_columns.append(col)
+    
+    # Add lag features (dynamically detect what's available)
+    lag_features = [col for col in df.columns if col.startswith('Close_Lag_')]
+    feature_columns.extend(lag_features)
     
     # Select only existing columns
-    existing_features = [col for col in feature_columns if col in df.columns]
+    existing_features = [col for col in feature_columns if col in df.columns and col in df.columns]
+    
+    # Ensure we have at least some features
+    if len(existing_features) < 2:
+        st.error(f"Insufficient features for ML model. Found: {existing_features}")
+        return pd.DataFrame(), pd.Series(), []
     
     X = df[existing_features].copy()
     y = df['Close'].copy()
+    
+    # Remove any rows with NaN values in features or target
+    valid_mask = ~(X.isnull().any(axis=1) | y.isnull())
+    X = X[valid_mask]
+    y = y[valid_mask]
     
     return X, y, existing_features
 
@@ -764,6 +910,14 @@ def main():
                     st.info("🇮🇳 Indian stock format detected")
                 else:
                     st.info("🇺🇸 US stock format detected")
+        
+        st.sidebar.markdown("### 🤖 Select Models for Forecasting")
+
+        model_choices = st.sidebar.multiselect(
+            "Choose the models:",
+            ["Prophet", "LSTM", "Random Forest",],
+            default=["Random Forest"]  # or [] if you want none pre-selected
+        )
 
         # Time period selection
         st.markdown("#### 📅 Time Period")
