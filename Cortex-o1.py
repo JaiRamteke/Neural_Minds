@@ -307,8 +307,8 @@ def test_api_connections():
     
     return status
 
-#@st.cache_data(ttl=300)
-def fetch_stock_data_yfinance_debug(ticker, period="1y", max_retries=2):
+@st.cache_data(ttl=300)
+def fetch_stock_data_yfinance(ticker, period="1y", max_retries=2):
     import traceback
     ticker_mapped = map_ticker_for_source(ticker, "yfinance")
     st.info(f"DEBUG: yfinance will try ticker: {ticker_mapped}")
