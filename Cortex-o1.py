@@ -294,75 +294,141 @@ def test_api_connections():
     return status
 
 @st.cache_data(ttl=300)
+def _fetch_stock_data_yfinance_cached(ticker, period):
+    """Cached wrapper for successful yfinance results only"""
+    result = fetch_stock_data_yfinance_uncached(ticker, period)
+    # Only cache if we got valid data
+    if result is not None and not result.empty:
+        return result
+    # Don't cache None/empty results - raise exception to bypass cache
+    raise Exception(f"No data returned from yfinance for {ticker}")
+
 def fetch_stock_data_yfinance(ticker, period="1y"):
+    """Smart caching yfinance wrapper - only caches successful results"""
     try:
-        ticker_mapped = map_ticker_for_source(ticker, "yfinance")
-        yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
-        yf_period = yf_period_map.get(period, '1y')
+        return _fetch_stock_data_yfinance_cached(ticker, period)
+    except Exception:
+        # Cache miss or no data - try uncached version
+        return fetch_stock_data_yfinance_uncached(ticker, period)
 
-        # Download data with proper error handling
-        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False, progress=False)
-        
-        if df is None or df.empty:
-            st.warning(f"No data returned from yfinance for {ticker_mapped}")
-            return None
+def fetch_stock_data_yfinance_uncached(ticker, period="1y"):
+    """Enhanced yfinance data fetching with retry logic and detailed logging"""
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                st.info(f"🔄 Retrying yfinance (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(retry_delay * attempt)  # Exponential backoff
+            
+            ticker_mapped = map_ticker_for_source(ticker, "yfinance")
+            yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
+            yf_period = yf_period_map.get(period, '1y')
 
-        df.reset_index(inplace=True)
-        
-        # Handle multi-level columns that yfinance sometimes returns
-        if isinstance(df.columns, pd.MultiIndex):
-            # Flatten multi-level columns - take the first level for multi-level columns
-            df.columns = [col[0] if col[1] == '' or pd.isna(col[1]) else col[0] for col in df.columns.values]
-        
-        # Clean up column names (remove any extra spaces)
-        df.columns = [str(col).strip() for col in df.columns]
-        
-        # Ensure Date is datetime
-        if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-        else:
-            st.error(f"Date column not found in yfinance data for {ticker}")
-            return None
+            # Download data with proper error handling and rate limiting consideration
+            df = yf.download(
+                ticker_mapped, 
+                period=yf_period, 
+                interval="1d", 
+                auto_adjust=True, 
+                progress=False,
+                prepost=False,
+                threads=False  # Avoid concurrent requests
+            )
+            
+            if df is None:
+                if attempt < max_retries - 1:
+                    continue
+                st.warning(f"⚠️ yfinance returned None for {ticker_mapped} (attempt {attempt + 1})")
+                return None
+            
+            if df.empty:
+                if attempt < max_retries - 1:
+                    continue
+                st.warning(f"⚠️ yfinance returned empty data for {ticker_mapped} (attempt {attempt + 1})")
+                return None
 
-        # Ensure 'Close' exists even if only 'Adj Close' was returned
-        if 'Close' not in df.columns and 'Adj Close' in df.columns:
-            df['Close'] = df['Adj Close']
-        
-        # Validate that we have the minimum required data
-        if 'Close' not in df.columns:
-            st.error(f"Close price data not available for {ticker}")
+            # Log successful fetch
+            st.success(f"✅ yfinance: Fetched {len(df)} data points for {ticker_mapped}")
+            
+            df.reset_index(inplace=True)
+            
+            # Handle multi-level columns that yfinance sometimes returns
+            if isinstance(df.columns, pd.MultiIndex):
+                # Flatten multi-level columns properly
+                df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns.values]
+            
+            # Clean up column names (remove any extra spaces)
+            df.columns = [str(col).strip() for col in df.columns]
+            
+            # Ensure Date is datetime
+            if 'Date' in df.columns:
+                df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+            else:
+                st.error(f"❌ Date column not found in yfinance data for {ticker}")
+                return None
+
+            # Ensure 'Close' exists even if only 'Adj Close' was returned
+            if 'Close' not in df.columns and 'Adj Close' in df.columns:
+                df['Close'] = df['Adj Close']
+            
+            # Validate that we have the minimum required data
+            if 'Close' not in df.columns:
+                st.error(f"❌ Close price data not available for {ticker}")
+                return None
+                
+            # Select required columns (only those that exist)
+            required_cols = ['Date','Open','High','Low','Close','Volume']
+            available_cols = [col for col in required_cols if col in df.columns]
+            
+            if len(available_cols) < 2:  # At least Date and Close
+                st.error(f"❌ Insufficient data columns available for {ticker}. Found: {available_cols}")
+                return None
+                
+            df = df[available_cols]
+            
+            # Final data validation
+            if df['Date'].isna().any():
+                df = df.dropna(subset=['Date'])
+                
+            if df.empty:
+                st.error(f"❌ No valid data remaining after processing for {ticker}")
+                return None
+                
+            # Ensure proper data types
+            df['Date'] = pd.to_datetime(df['Date'])
+            for col in ['Open','High','Low','Close','Volume']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            df.attrs = {'source':'yfinance','ticker':ticker_mapped}
+            return df
+            
+        except requests.exceptions.RequestException as e:
+            if "429" in str(e) or "Too Many Requests" in str(e):
+                st.warning(f"⚠️ Rate limit hit for yfinance (attempt {attempt + 1}). Waiting...")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 2))  # Longer wait for rate limits
+                    continue
+            st.error(f"❌ Network error fetching {ticker}: {str(e)}")
+            if attempt < max_retries - 1:
+                continue
             return None
+        except Exception as e:
+            error_msg = str(e)
+            if "No data found" in error_msg or "Data doesn't exist" in error_msg:
+                st.error(f"❌ No data available for {ticker} from yfinance")
+                return None
             
-        # Select required columns (only those that exist)
-        required_cols = ['Date','Open','High','Low','Close','Volume']
-        available_cols = [col for col in required_cols if col in df.columns]
-        
-        if len(available_cols) < 2:  # At least Date and Close
-            st.error(f"Insufficient data columns available for {ticker}. Found: {available_cols}")
+            st.error(f"❌ yfinance error for {ticker} (attempt {attempt + 1}): {error_msg}")
+            if attempt < max_retries - 1:
+                continue
             return None
-            
-        df = df[available_cols]
-        
-        # Final data validation
-        if df['Date'].isna().any():
-            df = df.dropna(subset=['Date'])
-            
-        if df.empty:
-            st.error(f"No valid data remaining after processing for {ticker}")
-            return None
-            
-        # Ensure proper data types
-        df['Date'] = pd.to_datetime(df['Date'])
-        for col in ['Open','High','Low','Close','Volume']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
-        return df
-        
-    except Exception as e:
-        st.error(f"yfinance fetch error for {ticker}: {str(e)}")
-        return None
+    
+    # If we get here, all retries failed
+    st.error(f"❌ yfinance failed after {max_retries} attempts for {ticker}")
+    return None
 
 
 
@@ -817,25 +883,35 @@ def main():
 
     # API Status Check
     with st.expander("🔍 API Status Check", expanded=False):
-        if st.button("🔄 Test API Connections", type="primary"):
-            with st.spinner("Testing API connections..."):
-                api_status = test_api_connections()
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("📊 yfinance Status")
-                if api_status['yfinance']['working']:
-                    st.markdown(f'<div class="api-status api-working">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="api-status api-failed">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
-            
-            with col2:
-                st.subheader("🔑 Alpha Vantage Status")
-                if api_status['alpha_vantage']['working']:
-                    st.markdown('<div class="api-status api-working">✅ Alpha Vantage is working</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔄 Test API Connections", type="primary"):
+                with st.spinner("Testing API connections..."):
+                    api_status = test_api_connections()
+                
+                col_a, col_b = st.columns(2)
+                
+                with col_a:
+                    st.subheader("📊 yfinance Status")
+                    if api_status['yfinance']['working']:
+                        st.markdown(f'<div class="api-status api-working">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="api-status api-failed">{api_status["yfinance"]["message"]}</div>', unsafe_allow_html=True)
+                
+                with col_b:
+                    st.subheader("🔑 Alpha Vantage Status")
+                    if api_status['alpha_vantage']['working']:
+                        st.markdown('<div class="api-status api-working">✅ Alpha Vantage is working</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="api-status api-failed">❌ Alpha Vantage error: {api_status["alpha_vantage"]["message"]}</div>', unsafe_allow_html=True)
+        
+        with col2:
+            if st.button("🗑️ Clear Data Cache", help="Clear cached data to force fresh API calls"):
+                st.cache_data.clear()
+                st.success("🎉 Cache cleared! Next data fetch will be fresh.")
+                time.sleep(1)
+                st.rerun()
 
     # Sidebar for inputs
     with st.sidebar:
