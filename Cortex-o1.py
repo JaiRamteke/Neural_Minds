@@ -309,9 +309,9 @@ def test_api_connections():
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_yfinance(ticker, period="1y", max_retries=2):
-    import traceback
     ticker_mapped = map_ticker_for_source(ticker, "yfinance")
-    st.info(f"DEBUG: yfinance will try ticker: {ticker_mapped}")
+    st.info(f"yfinance: trying ticker '{ticker_mapped}'")
+
     yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
     yf_period = yf_period_map.get(period, '1y')
 
@@ -320,31 +320,38 @@ def fetch_stock_data_yfinance(ticker, period="1y", max_retries=2):
         try:
             t = yf.Ticker(ticker_mapped)
             df = t.history(period=yf_period, interval="1d", auto_adjust=False, actions=False)
-            st.write(f"DEBUG: attempt {attempt} history returned shape: {None if df is None else getattr(df, 'shape', 'unknown')}")
+
             if df is None or df.empty:
                 df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False, threads=False)
-                st.write(f"DEBUG: attempt {attempt} download returned shape: {None if df is None else getattr(df, 'shape', 'unknown')}")
+
             if df is not None and not df.empty:
-                # normalize as your original function does...
                 df = df.reset_index()
                 if 'Close' not in df.columns and 'Adj Close' in df.columns:
                     df['Close'] = df['Adj Close']
                 for col in ['Date','Open','High','Low','Close','Volume']:
-                    if col not in df.columns: df[col] = np.nan
+                    if col not in df.columns: 
+                        df[col] = np.nan
                 df = df[['Date','Open','High','Low','Close','Volume']]
                 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
                 df = df.dropna(subset=['Date']).reset_index(drop=True)
                 df.attrs = {'source':'yfinance','ticker':ticker_mapped}
-                st.success(f"DEBUG: yfinance returned {len(df)} rows for {ticker_mapped}")
+                st.success(f"✅ yfinance returned {len(df)} rows for {ticker_mapped}")
                 return df
             else:
-                last_exc = Exception("yfinance returned no data")
+                last_exc = Exception("Empty DataFrame from Yahoo")
         except Exception as e:
             last_exc = e
-            st.write("DEBUG exception:", traceback.format_exc())
         time.sleep(1 + attempt*1.5)
 
-    st.warning(f"yfinance fetch failed for {ticker} ({ticker_mapped}): {str(last_exc)[:240]}")
+    # 🚨 Clear red banner with likely causes
+    st.error(
+        f"❌ yfinance failed to fetch data for `{ticker_mapped}`\n\n"
+        f"**Possible causes:**\n"
+        f"- Network block / firewall preventing access to Yahoo Finance\n"
+        f"- System clock mismatch (check system date & time)\n"
+        f"- Temporary Yahoo rate limiting (try again in 10–15 mins)\n\n"
+        f"Last error: {str(last_exc)[:200]}"
+    )
     return None
 
 
