@@ -15,6 +15,20 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import warnings
 warnings.filterwarnings('ignore')
 
+# --- Explainable AI imports (safe) ---
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except Exception:
+    SHAP_AVAILABLE = False
+
+try:
+    from sklearn.inspection import permutation_importance
+    PERM_AVAILABLE = True
+except Exception:
+    PERM_AVAILABLE = False
+
+
 # Try to import yfinance
 try:
     import yfinance as yf
@@ -226,31 +240,13 @@ RELIABLE_TICKERS = {
 
 
 def map_ticker_for_source(ticker: str, source: str) -> str:
-    """
-    Map tickers depending on data source.
-    - yfinance: NSE stocks need '.NS', US/global stocks stay unchanged.
-    - alpha_vantage: expects '.BSE' for Indian stocks, plain for US/global.
-    """
     base = ticker.split('.')[0].upper()
-    # NSE stock list used in your app
-    nse_list = [
-                "RELIANCE", # Reliance Industries
-                "TCS", # Tata Consultancy Services
-                "INFY", # Infosys
-                "HDFCBANK", # HDFC Bank
-                "ICICIBANK", # ICICI Bank
-                "SBIN", # State Bank of India
-                "KOTAKBANK", # Kotak Mahindra Bank
-                "AXISBANK", # Axis Bank
-                "LT", # Larsen & Toubro
-                "HINDUNILVR" # Hindustan Unilever
-                ]
     if source == "yfinance":
-        if base in nse_list:
+        if ticker.endswith(".NSE"):
             return base + ".NS"
         return base
     if source == "alpha_vantage":
-        if base in nse_list:
+        if ticker.endswith(".NSE"):
             return base + ".BSE"
         return base
     return ticker
@@ -306,47 +302,31 @@ def test_api_connections():
 def fetch_stock_data_yfinance(ticker, period="1y"):
     try:
         ticker_mapped = map_ticker_for_source(ticker, "yfinance")
-        
-        # Always ensure US tickers (AAPL, MSFT, etc.) are not suffixed
-        if ticker_mapped.endswith(".NSE") and not ticker.endswith(".NSE"):
-            ticker_mapped = ticker  # fallback to plain ticker for US stocks
+        yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
+        yf_period = yf_period_map.get(period, '1y')
 
-        df = yf.download(
-            ticker_mapped,
-            period=period,
-            interval="1d",
-            auto_adjust=True,
-            threads=False,
-            progress=False
-        )
-
-        # Retry with start/end if empty
+        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
         if df.empty:
-            end = datetime.now()
-            start = end - timedelta(days=365)
-            df = yf.download(
-                ticker_mapped,
-                start=start.strftime("%Y-%m-%d"),
-                end=end.strftime("%Y-%m-%d"),
-                interval="1d",
-                auto_adjust=True,
-                threads=False,
-                progress=False
-            )
-
-        if df.empty:
-            st.error(f"⚠️ yfinance returned empty data for {ticker_mapped}")
             return None
 
         df.reset_index(inplace=True)
-        if "Close" not in df.columns and "Adj Close" in df.columns:
-            df["Close"] = df["Adj Close"]
 
-        return df[["Date", "Open", "High", "Low", "Close", "Volume"]]
+        # Ensure Date is datetime
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
 
+        # Ensure 'Close' exists even if only 'Adj Close' was returned
+        if 'Close' not in df.columns and 'Adj Close' in df.columns:
+            df['Close'] = df['Adj Close']
+
+        df = df[['Date','Open','High','Low','Close','Volume']]
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
+        return df
     except Exception as e:
-        st.error(f"yfinance fetch error: {str(e)}")
+        st.error(f"yfinance fetch error: {e}")
         return None
+
+
 
 @st.cache_data(ttl=300)
 def fetch_stock_data_unified(ticker, period="1y"):
@@ -700,6 +680,173 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
         pass
     st.write(f"- {label}: Data not available")
 
+
+def render_explainable_ai_tab(model, scaler, df):
+    """
+    Render Explainable AI visuals: SHAP summary + local explanation.
+    Falls back to permutation importance if SHAP is unavailable.
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        st.error("matplotlib is required for Explainable AI visuals.")
+        return
+
+    st.markdown("### 🧠 Explainable AI")
+    st.write(
+        "This section explains the model's predictions using **feature attributions**. "
+        "When available, we use **SHAP (TreeExplainer)** for Random Forests; otherwise we fall back to "
+        "**Permutation Importance** as a model-agnostic alternative."
+    )
+
+    # Prepare features using existing pipeline
+    try:
+        X, y, feature_names = prepare_features(df)
+        if X is None or X.empty:
+            st.error("No features available for explanation.")
+            return
+    except Exception as e:
+        st.error(f"Failed to prepare features for explanation: {e}")
+        return
+
+    # Scale features to match training
+    try:
+        X_scaled = scaler.transform(X.values)
+    except Exception as e:
+        st.error(f"Feature scaling failed: {e}")
+        return
+
+    # Subsample for speed
+    max_rows = 800
+    if len(X) > max_rows:
+        X_disp = X.tail(max_rows).reset_index(drop=True)
+        Xs_disp = X_scaled[-max_rows:]
+    else:
+        X_disp = X.reset_index(drop=True)
+        Xs_disp = X_scaled
+
+    # === Try SHAP first ===
+    used_shap = False
+    if "RandomForestRegressor" in str(type(model)) and "sklearn" in str(type(model)):
+        if SHAP_AVAILABLE:
+            try:
+                st.markdown("#### 🔎 Global Importance (SHAP)")
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(Xs_disp)
+                # Summary bar
+                fig_bar = plt.figure(figsize=(8, 5))
+                shap.summary_plot(shap_values, X_disp, feature_names=feature_names, plot_type="bar", show=False)
+                st.pyplot(fig_bar, clear_figure=True)
+
+                # Beeswarm
+                fig_swarm = plt.figure(figsize=(8, 5))
+                shap.summary_plot(shap_values, X_disp, feature_names=feature_names, show=False)
+                st.pyplot(fig_swarm, clear_figure=True)
+
+                # Local explanation (pick a row)
+                st.markdown("#### 👤 Local Explanation")
+                idx = st.slider("Select a recent row to explain", 0, len(X_disp)-1, len(X_disp)-1)
+                try:
+                    # Waterfall for single observation
+                    if hasattr(shap, "Explanation"):
+                        base = explainer.expected_value
+                        if isinstance(base, (list, tuple)) and len(base) == 1:
+                            base = base[0]
+                        expl = shap.Explanation(
+                            values=shap_values[idx],
+                            base_values=base,
+                            data=X_disp.iloc[idx].values,
+                            feature_names=feature_names,
+                        )
+                        fig_local = plt.figure(figsize=(8, 6))
+                        shap.plots.waterfall(expl, show=False)
+                        st.pyplot(fig_local, clear_figure=True)
+                    else:
+                        fig_local = plt.figure(figsize=(9, 2.6))
+                        shap.force_plot(explainer.expected_value, shap_values[idx], X_disp.iloc[idx], matplotlib=True, show=False)
+                        st.pyplot(fig_local, clear_figure=True)
+                except Exception as e:
+                    st.warning(f"Could not render local SHAP waterfall plot: {e}")
+                used_shap = True
+            except Exception as e:
+                st.warning(f"SHAP failed ({e}). Falling back to permutation importance.")
+        else:
+            st.info("SHAP not available; using permutation importance instead.")
+
+    # === Fallback: permutation importance ===
+    if not used_shap:
+        if PERM_AVAILABLE:
+            st.markdown("#### 🔎 Global Importance (Permutation Importance)")
+            try:
+                with st.spinner("Computing permutation importance..."):
+                    # Use last N rows for speed
+                    n_last = min(400, len(X_scaled))
+                    result = permutation_importance(
+                        model, X_scaled[-n_last:], y[-n_last:], n_repeats=10, random_state=42, n_jobs=-1
+                    )
+                imp_df = pd.DataFrame({
+                    "feature": feature_names,
+                    "importance_mean": result.importances_mean,
+                    "importance_std": result.importances_std
+                }).sort_values("importance_mean", ascending=False)
+
+                fig_imp = px.bar(
+                    imp_df.head(15),
+                    x="importance_mean", y="feature",
+                    error_x="importance_std",
+                    orientation="h",
+                    title="Top Features by Permutation Importance",
+                    template="plotly_white"
+                )
+                fig_imp.update_layout(yaxis={"categoryorder":"total ascending"})
+                st.plotly_chart(fig_imp, use_container_width=True)
+            except Exception as e:
+                st.error(f"Permutation importance failed: {e}")
+        else:
+            st.error("Neither SHAP nor permutation importance is available in this environment.")
+
+    # Simple one-feature sensitivity analysis
+    try:
+        st.markdown("#### 🧪 Simple Sensitivity: One‑Feature Sweep")
+        # Choose top feature
+        top_feat = None
+        if used_shap:
+            import numpy as np
+            mean_abs = np.mean(np.abs(shap_values), axis=0)
+            top_feat = feature_names[int(mean_abs.argmax())]
+        else:
+            try:
+                top_feat = imp_df.iloc[0]["feature"]
+            except Exception:
+                pass
+
+        if top_feat is not None and top_feat in X_disp.columns:
+            import numpy as np
+            feat_vals = X_disp[top_feat]
+            pcts = np.linspace(5, 95, 15)
+            grid = np.percentile(feat_vals, pcts)
+            base_row = X_disp.iloc[[-1]].copy()
+            preds = []
+            for v in grid:
+                row = base_row.copy()
+                row[top_feat] = v
+                row_scaled = scaler.transform(row.values)
+                preds.append(float(model.predict(row_scaled)[0]))
+
+            import plotly.graph_objects as go
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=list(map(float, grid)), y=preds, mode="lines+markers", name="Predicted Close"))
+            fig.update_layout(
+                title=f"Sensitivity of prediction to `{top_feat}`",
+                xaxis_title=top_feat,
+                yaxis_title="Predicted Close",
+                template="plotly_white"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Could not determine a top feature for sensitivity analysis.")
+    except Exception as e:
+        st.warning(f"Sensitivity analysis skipped: {e}")
 def main():
     # Title and description
     st.markdown('<h1 class="main-header">Neural Minds</h1>', unsafe_allow_html=True)
@@ -822,6 +969,14 @@ def main():
                     st.info("🇮🇳 Indian stock format detected")
                 else:
                     st.info("🇺🇸 US stock format detected")
+        
+        st.sidebar.markdown("### 🤖 Select Models for Forecasting")
+
+        model_choices = st.sidebar.multiselect(
+            "Choose the models:",
+            ["Prophet", "LSTM", "Random Forest",],
+            default=["Random Forest"]  # or [] if you want none pre-selected
+        )
 
         # Time period selection
         st.markdown("#### 📅 Time Period")
@@ -846,12 +1001,13 @@ def main():
             return
         
         # Create tabs for different views
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📊 Stock Analysis", 
             "🔮 Predictions", 
             "📈 Charts", 
             "🤖 Model Performance", 
-            "📋 Data Table"
+            "📋 Data Table",
+            "🧩 Explainable AI"
         ])
         
         # Fetch stock data depending on user choice
@@ -1366,7 +1522,15 @@ def main():
                         st.write("- Volatility: Data not available")
                 except Exception:
                     st.write("- Volatility: Data not available")
-        
+        # ---------------------------
+        # Tab6: Explainable AI
+        # ---------------------------
+        with tab6:
+            if 'model' in locals() and model is not None and 'scaler' in locals() and scaler is not None:
+                render_explainable_ai_tab(model, scaler, df)
+            else:
+                st.info("Train the model in the **Predictions** tab to enable Explainable AI.")
+
         # Warning disclaimer
         st.markdown("""
         <div class="warning-card">
@@ -1462,7 +1626,8 @@ def main():
         st.markdown(
             """
             ---
-            👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+            
+👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
             """,
             unsafe_allow_html=True
 )
