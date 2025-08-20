@@ -230,30 +230,44 @@ def test_api_connections():
 def fetch_stock_data_yfinance(ticker, period="1y"):
     try:
         ticker_mapped = map_ticker_for_source(ticker, "yfinance")
-        yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
-        yf_period = yf_period_map.get(period, '1y')
+        
+        # Always ensure US tickers (AAPL, MSFT, etc.) are not suffixed
+        if ticker_mapped.endswith(".NSE") and not ticker.endswith(".NSE"):
+            ticker_mapped = ticker  # fallback to plain ticker for US stocks
 
         df = yf.download(
             ticker_mapped,
-            period=yf_period,
+            period=period,
             interval="1d",
-            auto_adjust=True,  # ✅ Fix applied
+            auto_adjust=True,
+            threads=False,
             progress=False
         )
 
+        # Retry with start/end if empty
         if df.empty:
-            st.error(f"yfinance returned empty data for {ticker_mapped}")
+            end = datetime.now()
+            start = end - timedelta(days=365)
+            df = yf.download(
+                ticker_mapped,
+                start=start.strftime("%Y-%m-%d"),
+                end=end.strftime("%Y-%m-%d"),
+                interval="1d",
+                auto_adjust=True,
+                threads=False,
+                progress=False
+            )
+
+        if df.empty:
+            st.error(f"⚠️ yfinance returned empty data for {ticker_mapped}")
             return None
 
         df.reset_index(inplace=True)
-        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        if "Close" not in df.columns and "Adj Close" in df.columns:
+            df["Close"] = df["Adj Close"]
 
-        if 'Close' not in df.columns and 'Adj Close' in df.columns:
-            df['Close'] = df['Adj Close']
+        return df[["Date", "Open", "High", "Low", "Close", "Volume"]]
 
-        df = df[['Date','Open','High','Low','Close','Volume']]
-        df.attrs = {'source':'yfinance','ticker':ticker_mapped}
-        return df
     except Exception as e:
         st.error(f"yfinance fetch error: {str(e)}")
         return None
