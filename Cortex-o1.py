@@ -291,7 +291,7 @@ def fetch_stock_data_yfinance(ticker, period="1y"):
         yf_period_map = {'1mo':'1mo','3mo':'3mo','6mo':'6mo','1y':'1y','2y':'2y','5y':'5y'}
         yf_period = yf_period_map.get(period, '1y')
 
-        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=False)
+        df = yf.download(ticker_mapped, period=yf_period, interval="1d", auto_adjust=True)
         if df.empty:
             return None
 
