@@ -168,13 +168,31 @@ RELIABLE_TICKERS = {
 
 
 def map_ticker_for_source(ticker: str, source: str) -> str:
+    """
+    Map tickers depending on data source.
+    - yfinance: NSE stocks need '.NS', US/global stocks stay unchanged.
+    - alpha_vantage: expects '.BSE' for Indian stocks, plain for US/global.
+    """
     base = ticker.split('.')[0].upper()
+    # NSE stock list used in your app
+    nse_list = [
+                "RELIANCE", # Reliance Industries
+                "TCS", # Tata Consultancy Services
+                "INFY", # Infosys
+                "HDFCBANK", # HDFC Bank
+                "ICICIBANK", # ICICI Bank
+                "SBIN", # State Bank of India
+                "KOTAKBANK", # Kotak Mahindra Bank
+                "AXISBANK", # Axis Bank
+                "LT", # Larsen & Toubro
+                "HINDUNILVR" # Hindustan Unilever
+                ]
     if source == "yfinance":
-        if ticker.endswith(".NSE"):
+        if base in nse_list:
             return base + ".NS"
         return base
     if source == "alpha_vantage":
-        if ticker.endswith(".NSE"):
+        if base in nse_list:
             return base + ".BSE"
         return base
     return ticker
