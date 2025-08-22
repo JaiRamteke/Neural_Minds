@@ -619,82 +619,59 @@ def iterative_forecast(df, pipe, days=1, target_type="return"):
     return preds, fc_dates
 
 # ---------------------
-# Stock info (unchanged mapping)
+# Asset info (Stocks + Commodities)
 # ---------------------
-def get_stock_info(ticker):
-    stock_info = {
-        'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
-        'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
-        'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
-        'GS': {'name': 'Goldman Sachs Group, Inc.', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
-        'STT': {'name': 'State Street Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
-        'GOOGL': {'name': 'Alphabet Inc.', 'sector': 'Technology', 'industry': 'Internet Services', 'currency': 'USD'},
-        'AMZN': {'name': 'Amazon.com, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
-        'META': {'name': 'Meta Platforms, Inc.', 'sector': 'Communication Services', 'industry': 'Social Media', 'currency': 'USD'},
-        'TSLA': {'name': 'Tesla, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
-        'NVDA': {'name': 'NVIDIA Corporation', 'sector': 'Technology', 'industry': 'Semiconductors', 'currency': 'USD'},
-        'JPM': {'name': 'JPMorgan Chase & Co.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
-        'V': {'name': 'Visa Inc.', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
-        'WMT': {'name': 'Walmart Inc.', 'sector': 'Consumer Defensive', 'industry': 'Discount Stores', 'currency': 'USD'},
-        # Indian
-        'RELIANCE': {'name': 'Reliance Industries Limited', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
-        'TCS': {'name': 'Tata Consultancy Services', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
-        'PARAS': {'name': 'Paras Defence and Space Technologies Ltd.', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
-        'INFY': {'name': 'Infosys Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
-        'HDFCBANK': {'name': 'HDFC Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-        'ICICIBANK': {'name': 'ICICI Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-        'HINDUNILVR': {'name': 'Hindustan Unilever Limited', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'INR'},
-        'BHARTIARTL': {'name': 'Bharti Airtel Limited', 'sector': 'Communication Services', 'industry': 'Telecom Services', 'currency': 'INR'},
-        'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-        'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
-        'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-    },
-    commodities_info = {
-    # Metals
-    'GC=F': {
-        'name': 'Gold Futures',
-        'sector': 'Commodity',
-        'industry': 'Metals',
-        'currency': 'USD',
-        'icon': '🪙'
-    },
-    'SI=F': {
-        'name': 'Silver Futures',
-        'sector': 'Commodity',
-        'industry': 'Metals',
-        'currency': 'USD',
-        'icon': '🥈'
-    },
 
-    # Energy
-    'CL=F': {
-        'name': 'Crude Oil Futures',
-        'sector': 'Commodity',
-        'industry': 'Energy',
-        'currency': 'USD',
-        'icon': '🛢'
-    },
-    'NG=F': {
-        'name': 'Natural Gas Futures',
-        'sector': 'Commodity',
-        'industry': 'Energy',
-        'currency': 'USD',
-        'icon': '🔥'
-    },
-
-    # Agriculture
-    'ZC=F': {
-        'name': 'Corn Futures',
-        'sector': 'Commodity',
-        'industry': 'Agriculture',
-        'currency': 'USD',
-        'icon': '🌽'
-    }
+STOCK_INFO = {
+    'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
+    'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
+    'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'GS': {'name': 'Goldman Sachs Group, Inc.', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
+    'STT': {'name': 'State Street Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'GOOGL': {'name': 'Alphabet Inc.', 'sector': 'Technology', 'industry': 'Internet Services', 'currency': 'USD'},
+    'AMZN': {'name': 'Amazon.com, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
+    'META': {'name': 'Meta Platforms, Inc.', 'sector': 'Communication Services', 'industry': 'Social Media', 'currency': 'USD'},
+    'TSLA': {'name': 'Tesla, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
+    'NVDA': {'name': 'NVIDIA Corporation', 'sector': 'Technology', 'industry': 'Semiconductors', 'currency': 'USD'},
+    'JPM': {'name': 'JPMorgan Chase & Co.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
+    'V': {'name': 'Visa Inc.', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
+    'WMT': {'name': 'Walmart Inc.', 'sector': 'Consumer Defensive', 'industry': 'Discount Stores', 'currency': 'USD'},
+    # Indian Stocks
+    'RELIANCE': {'name': 'Reliance Industries Limited', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
+    'TCS': {'name': 'Tata Consultancy Services', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'PARAS': {'name': 'Paras Defence and Space Technologies Ltd.', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
+    'INFY': {'name': 'Infosys Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'HDFCBANK': {'name': 'HDFC Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'ICICIBANK': {'name': 'ICICI Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'HINDUNILVR': {'name': 'Hindustan Unilever Limited', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'INR'},
+    'BHARTIARTL': {'name': 'Bharti Airtel Limited', 'sector': 'Communication Services', 'industry': 'Telecom Services', 'currency': 'INR'},
+    'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
+    'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
 }
 
+COMMODITIES_INFO = {
+    # Metals
+    'GC=F': {'name': 'Gold Futures', 'sector': 'Commodity', 'industry': 'Metals', 'currency': 'USD', 'icon': '🪙'},
+    'SI=F': {'name': 'Silver Futures', 'sector': 'Commodity', 'industry': 'Metals', 'currency': 'USD', 'icon': '🥈'},
+    # Energy
+    'CL=F': {'name': 'Crude Oil Futures', 'sector': 'Commodity', 'industry': 'Energy', 'currency': 'USD', 'icon': '🛢'},
+    'NG=F': {'name': 'Natural Gas Futures', 'sector': 'Commodity', 'industry': 'Energy', 'currency': 'USD', 'icon': '🔥'},
+    # Agriculture
+    'ZC=F': {'name': 'Corn Futures', 'sector': 'Commodity', 'industry': 'Agriculture', 'currency': 'USD', 'icon': '🌽'},
+}
+
+def get_stock_info(ticker: str):
     base_ticker = ticker.split('.')[0].upper()
-    info = stock_info.get(base_ticker, {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'})
-    info['market_cap'] = 'N/A'
+
+    if base_ticker in STOCK_INFO:
+        info = STOCK_INFO[base_ticker]
+    elif ticker in COMMODITIES_INFO:
+        info = COMMODITIES_INFO[ticker]
+    else:
+        info = {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'}
+
+    info['market_cap'] = info.get('market_cap', 'N/A')  # Commodities don’t have market cap
     return info
 
 # Safe display helper
