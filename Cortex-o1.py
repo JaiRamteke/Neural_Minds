@@ -626,10 +626,10 @@ def iterative_forecast(df, pipe, days=1, target_type="return"):
     return preds, fc_dates
 
 # ---------------------
-# Asset info (stocks + commodities)
+# Unified Asset Info (Stocks + Commodities)
 # ---------------------
-def get_asset_info(ticker: str):
-    stock_info = {
+def get_stock_info(ticker):
+    stock_dict = {
         'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
         'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
         'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
@@ -656,13 +656,22 @@ def get_asset_info(ticker: str):
         'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
         'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
     }
+
+    commodities_dict = {
+        'GC=F': {'name': 'Gold Futures', 'sector': 'Commodity', 'industry': 'Metals', 'currency': 'USD', 'icon': '🪙'},
+        'SI=F': {'name': 'Silver Futures', 'sector': 'Commodity', 'industry': 'Metals', 'currency': 'USD', 'icon': '🥈'},
+        'CL=F': {'name': 'Crude Oil Futures', 'sector': 'Commodity', 'industry': 'Energy', 'currency': 'USD', 'icon': '🛢'},
+        'NG=F': {'name': 'Natural Gas Futures', 'sector': 'Commodity', 'industry': 'Energy', 'currency': 'USD', 'icon': '🔥'},
+        'ZC=F': {'name': 'Corn Futures', 'sector': 'Commodity', 'industry': 'Agriculture', 'currency': 'USD', 'icon': '🌽'},
+    }
+
     base_ticker = ticker.split('.')[0].upper()
-    # If it's a known commodity ticker, return that
-    if base_ticker in COMMODITIES:
-        info = dict(COMMODITIES[base_ticker])  # copy
-    else:
-        info = stock_info.get(base_ticker, {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'})
-    info['market_cap'] = 'N/A'
+
+    # merge both dicts
+    all_info = {**stock_dict, **commodities_dict}
+
+    info = all_info.get(base_ticker, {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'})
+    info['market_cap'] = info.get('market_cap', 'N/A')
     return info
 
 # Safe display helper
