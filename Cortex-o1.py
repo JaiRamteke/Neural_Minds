@@ -159,6 +159,34 @@ RELIABLE_TICKERS = {
         }
 }
 
+# --- Stock selection helper ---
+def get_selected_ticker(market: str, selected_stock: str) -> str:
+    """Map user-friendly selection to actual ticker."""
+    if market == "US Stocks":
+        return RELIABLE_TICKERS["US Markets"][selected_stock]
+    elif market == "Indian Stocks":
+        return RELIABLE_TICKERS["Indian Markets"][selected_stock]
+    else:
+        return selected_stock
+    
+# --- Integration into main() ---
+def stock_selection_ui():
+    import streamlit as st
+    st.markdown("#### 📈 Stock Selection")
+    market = st.selectbox("Select Market", ["US Stocks", "Indian Stocks"])
+    if market == "US Stocks":
+        stock_options = RELIABLE_TICKERS["US Markets"]
+    else:
+        stock_options = RELIABLE_TICKERS["Indian Markets"]
+
+    selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
+    ticker = get_selected_ticker(market, selected_stock)
+    if market == "US Stocks":
+        st.info(f"📊 Selected: {ticker}")
+    else:
+        st.info(f"🇮🇳 Selected: {ticker}")
+    return ticker
+
 # ---------------------
 # Helpers: mapping tickers and API checks
 # ---------------------
@@ -915,19 +943,7 @@ def main():
             ["yfinance", "Alpha Vantage"], index=0)
 
         # Stock selection
-        st.markdown("#### 📈 Stock Selection")
-        market = st.selectbox("Select Market", ["US Stocks", "Indian Stocks"])
-        if market == "US Stocks":
-            stock_options = RELIABLE_TICKERS["US Markets"]
-            selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
-            ticker = selected_stock
-            st.info(f"📊 Selected: {stock_options[selected_stock]}")
-        else:
-            market == "Indian Stocks"
-            stock_options = RELIABLE_TICKERS["Indian Markets"]
-            selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
-            ticker = selected_stock
-            st.info(f"🇮🇳 Selected: {stock_options[selected_stock]}")
+        ticker = stock_selection_ui()
 
         # Time period
         st.markdown("#### 📅 Time Period")
