@@ -616,53 +616,83 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
     st.write(f"- {label}: Data not available")
 
 # Explainable AI tab (compatible with Pipeline)
-def render_explainable_ai_tab(pipe, df):
-    st.markdown("### 🧠 Explainable AI")
-    st.write("Feature attributions via **SHAP** when supported; otherwise **Permutation Importance**.")
-    try:
-        X_all, y_all, feature_names = prepare_supervised(df, horizon=1, target_type=st.session_state.get("target_type","return"))
-    except Exception as e:
-        st.error(f"Failed to prepare features for explanation: {e}")
-        return
-    if X_all is None or X_all.empty:
-        st.error("No features available for explanation.")
-        return
-    try:
-        # pull the wrapped model if possible
-        model = getattr(pipe.named_steps.get("m", None), "feature_importances_", None)
-    except Exception:
-        model = None
+def render_explainable_ai_tab(final_pipe, df):
 
-    # SHAP for tree-based where possible
-    used_shap = False
-    if SHAP_AVAILABLE and hasattr(pipe.named_steps.get("m", None), "predict"):
+    st.markdown("## 🔍 Explainable AI")
+
+    try:
+        # Prepare supervised dataset (same as Tab2)
+        horizon = 1
+        X, y, features = prepare_supervised(df, horizon=horizon, target_type=st.session_state["target_type"])
+
+        if final_pipe is None or X is None or X.empty:
+            st.warning("Run predictions in Tab2 first to enable explainability.")
+            return
+
+        # ---------------- 🌍 Global Explanation ----------------
+        st.markdown("### 🌍 Feature Importance (Global Explanation)")
         try:
-            # we use a tree explainer when underlying model is tree-based
-            inner = pipe.named_steps.get("m", None)
-            name = inner.__class__.__name__.lower()
-            if any(k in name for k in ["forest","tree","boost"]):
-                Xs = pipe.named_steps["sc"].transform(pipe.named_steps["imp"].transform(X_all.values))
-                explainer = shap.TreeExplainer(inner)
-                shap_vals = explainer.shap_values(Xs)
-                fig_bar = plt.figure(figsize=(8,5))
-                shap.summary_plot(shap_vals, X_all, feature_names=feature_names, plot_type="bar", show=False)
-                st.pyplot(fig_bar, clear_figure=True)
-                used_shap = True
+            result = permutation_importance(
+                final_pipe, X, y, n_repeats=10, random_state=42, n_jobs=-1
+            )
+
+            fi = pd.DataFrame({
+                "feature": X.columns,
+                "importance": result.importances_mean
+            }).sort_values("importance", ascending=False)
+
+            fig_fi = px.bar(
+                fi, x="importance", y="feature", orientation="h",
+                title="Which features matter most overall"
+            )
+            st.plotly_chart(fig_fi, use_container_width=True)
+
+            st.info("Global importance shows which indicators (like RSI, moving averages, or volatility) "
+                    "the model relies on most across the entire dataset.")
         except Exception as e:
-            st.warning(f"SHAP failed ({e}). Falling back to permutation importance.")
-    if not used_shap and PERM_AVAILABLE:
+            st.error(f"Global feature importance failed: {e}")
+
+        # ---------------- 🎯 Local Explanation ----------------
+        st.markdown("### 🎯 Local Explanation (Latest Prediction)")
         try:
-            Xs = pipe.named_steps["sc"].transform(pipe.named_steps["imp"].transform(X_all.values))
-            inner = pipe.named_steps.get("m", None)
-            result = permutation_importance(inner, Xs, y_all, n_repeats=8, random_state=42, n_jobs=-1)
-            imp_df = pd.DataFrame({"feature": feature_names, "importance_mean": result.importances_mean,
-                                   "importance_std": result.importances_std}).sort_values("importance_mean", ascending=False)
-            fig_imp = px.bar(imp_df.head(15), x="importance_mean", y="feature", error_x="importance_std",
-                             orientation="h", title="Top Features by Permutation Importance", template="plotly_white")
-            fig_imp.update_layout(yaxis={"categoryorder":"total ascending"})
-            st.plotly_chart(fig_imp, use_container_width=True)
+            # Get latest row
+            X_all, _, _ = prepare_supervised(df, horizon=1, target_type=st.session_state["target_type"])
+            last_row = X_all.iloc[[-1]]
+
+            # Use SHAP to explain local prediction
+            explainer = shap.Explainer(final_pipe.named_steps["m"], X_all)
+            shap_values = explainer(last_row)
+
+            st.write("**Why the latest prediction looks this way:**")
+            fig_local = shap.plots.waterfall(shap_values[0], show=False)
+            st.pyplot(fig_local, clear_figure=True)
+
+            # --------- Plain English Narrative ---------
+            shap_contribs = dict(zip(X_all.columns, shap_values.values[0]))
+            top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
+
+            narrative = []
+            for feat, val in top_features:
+                direction = "increased" if val > 0 else "decreased"
+                pct = f"{abs(val):.2f}"
+                narrative.append(f"- **{feat}** {direction} the forecast by ~{pct} units")
+
+            st.markdown("#### 📝 Narrative Explanation")
+            st.write("The model's latest prediction was mainly influenced by:")
+            for line in narrative:
+                st.write(line)
+
+            net_effect = sum(shap_contribs.values())
+            if net_effect > 0:
+                st.success("Overall: Features combined to push the forecast **UP (Bullish Bias)**")
+            else:
+                st.error("Overall: Features combined to push the forecast **DOWN (Bearish Bias)**")
+
         except Exception as e:
-            st.warning(f"Permutation importance failed: {e}")
+            st.error(f"Local explanation failed: {e}")
+
+    except Exception as e:
+        st.error(f"Explainable AI tab failed: {e}")
 
 # ---------------------
 # App
