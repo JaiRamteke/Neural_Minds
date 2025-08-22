@@ -96,6 +96,17 @@ RELIABLE_TICKERS = {
 # ---------------- US Stocks ----------------
         "US Markets": {
         "AAPL": "AAPL", # Apple
+        'BLK': 'BLK',       # BlackRock
+        'MS': 'MS',         # Morgan Stanley
+        'GS': 'GS',         # Goldman Sachs
+        'STT': 'STT',       # State Street
+        'NTRS': 'NTRS',     # Northern Trust
+        'BAC': 'BAC',       # Bank of America
+        'MA': 'MA',         # Mastercard
+        'C': 'C',           # Citigroup
+        'BCS': 'BCS',       # Barclays PLC (NYSE-listed ADR)
+        'UBS': 'UBS',       # UBS Group AG (NYSE-listed ADR)
+        'DB': 'DB',         # Deutsche Bank AG (NYSE-listed ADR)
         "MSFT": "MSFT", # Microsoft
         "GOOGL": "GOOGL", # Alphabet
         "AMZN": "AMZN", # Amazon
@@ -715,6 +726,17 @@ def get_stock_info(ticker, data_source="yfinance"):
     stock_dict = {
     # ---------------- US Stocks ----------------
     'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
+    'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'MS': {'name': 'Morgan Stanley', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
+    'GS': {'name': 'The Goldman Sachs Group, Inc.', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
+    'STT': {'name': 'State Street Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'NTRS': {'name': 'Northern Trust Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
+    'BAC': {'name': 'Bank of America Corporation', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
+    'MA': {'name': 'Mastercard Incorporated', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
+    'BCS': {'name': 'Barclays PLC', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'GBP'},
+    'C': {'name': 'Citigroup Inc.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
+    'UBS': {'name': 'UBS Group AG', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'CHF'},
+    'DB': {'name': 'Deutsche Bank Aktiengesellschaft', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'EUR'},
     'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software—Infrastructure', 'currency': 'USD'},
     'GOOGL': {'name': 'Alphabet Inc. (Class A)', 'sector': 'Communication Services', 'industry': 'Internet Content & Information', 'currency': 'USD'},
     'AMZN': {'name': 'Amazon.com Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
