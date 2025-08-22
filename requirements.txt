@@ -8,7 +8,5 @@ requests
 scikit-learn
 yfinance
 statsmodels
-prophet
 tensorflow
-keras
 shap
