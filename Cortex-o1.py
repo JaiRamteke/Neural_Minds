@@ -171,7 +171,6 @@ def get_selected_ticker(market: str, selected_stock: str) -> str:
     
 # --- Integration into main() ---
 def stock_selection_ui():
-    import streamlit as st
     st.markdown("#### 📈 Stock Selection")
     market = st.selectbox("Select Market", ["US Stocks", "Indian Stocks"])
     if market == "US Stocks":
@@ -182,9 +181,9 @@ def stock_selection_ui():
     selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
     ticker = get_selected_ticker(market, selected_stock)
     if market == "US Stocks":
-        st.info(f"📊 Selected: {ticker}")
+        st.info(f"📊 Selected: {stock_options[selected_stock]}")
     else:
-        st.info(f"🇮🇳 Selected: {ticker}")
+        st.info(f"📊 Selected: {stock_options[selected_stock]}")
     return ticker
 
 # ---------------------
