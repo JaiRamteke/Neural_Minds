@@ -278,34 +278,59 @@ def calculate_rsi(prices, window=14):
 def process_stock_data(df, ticker, source):
     if df is None or df.empty:
         return None
-    # 🔹 Drop duplicate columns (common issue with Yahoo/nested downloads)
-    df = df.loc[:, ~df.columns.duplicated()]
-    # 🔹 Ensure Date handling
-    if 'Date' not in df.columns and df.index.name == 'Date':
+    # 🔹 Normalize columns right after download
+    if isinstance(df.columns, pd.MultiIndex):
+        # Flatten multi-index (like ('Close','adj') → 'Close')
+        df.columns = df.columns.get_level_values(0)
+    # 🔹 Drop duplicate column names (e.g., two "Close" columns)
+    df = df.loc[:, ~pd.Index(df.columns).duplicated(keep="first")]
+    # 🔹 Ensure "Close" exists (fallback to "Adj Close" if needed)
+    if "Close" not in df.columns and "Adj Close" in df.columns:
+        df["Close"] = df["Adj Close"]
+    # 🔹 Ensure Date column exists
+    if "Date" not in df.columns and df.index.name == "Date":
         df = df.reset_index()
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    # Keep only expected OHLCV columns if present
+    keep_cols = [c for c in ["Date", "Open", "High", "Low", "Close", "Volume"] if c in df.columns]
+    df = df[keep_cols]
+    # --- Helper: force 1-D numeric Series ---
+    def _series_1d(frame, col):
+        if col not in frame.columns:
+            return pd.Series(np.nan, index=frame.index)
+        obj = frame[col]
+        if isinstance(obj, pd.DataFrame):
+            obj = obj.iloc[:, 0]
+        return pd.to_numeric(obj.squeeze(), errors="coerce")
+    # --- Core series ---
+    close = _series_1d(df, "Close")
+    volume = _series_1d(df, "Volume") if "Volume" in df.columns else None
     # --- Technical Indicators ---
-    df['MA_20'] = df['Close'].rolling(window=20).mean()
-    df['MA_50'] = df['Close'].rolling(window=50).mean()
-    df['RSI'] = calculate_rsi(df['Close'])
-    df['Price_Change'] = df['Close'].pct_change()
-    df['Log_Return'] = np.log(df['Close']).diff()
-    df['Vol_5'] = df['Log_Return'].rolling(5).std()
-    df['Vol_20'] = df['Log_Return'].rolling(20).std()
-    df['Mom_5'] = df['Close'].pct_change(5)
-    # --- Safe Z-score (fixed to avoid ValueError) ---
-    close = pd.Series(df['Close'].values, index=df.index)
-    ma20  = pd.Series(df['MA_20'].values, index=df.index)
-    std20 = pd.Series(df['Close'].rolling(window=20).std().values, index=df.index)
-    df['Z_20'] = (close - ma20) / (std20 + 1e-9)
-    # Volume moving average
-    if 'Volume' in df.columns:
-        df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
+    df["MA_20"] = close.rolling(window=20).mean()
+    df["MA_50"] = close.rolling(window=50).mean()
+    df["RSI"] = calculate_rsi(close)
+
+    df["Price_Change"] = close.pct_change()
+    df["Log_Return"] = np.log(close).diff()
+    df["Vol_5"] = df["Log_Return"].rolling(5).std()
+    df["Vol_20"] = df["Log_Return"].rolling(20).std()
+    df["Mom_5"] = close.pct_change(5)
+    std20 = close.rolling(window=20).std()
+    df["Z_20"] = (close - df["MA_20"]) / (std20 + 1e-9)
+    if volume is not None and not volume.isna().all():
+        df["Volume_MA"] = volume.rolling(window=10).mean()
     else:
-        df['Volume'] = np.nan
-        df['Volume_MA'] = np.nan
-    # Forward returns for training
-    df['Fwd_Return_1d'] = df['Close'].pct_change().shift(-1) * 100.0
-    df['Fwd_Price_1d'] = df['Close'].shift(-1)
+        df["Volume_MA"] = np.nan
+    # Lag features
+    for i in [1, 2, 3, 5]:
+        df[f"Close_Lag_{i}"] = close.shift(i)
+        df[f"Ret_Lag_{i}"] = df["Price_Change"].shift(i)
+    # Forward returns
+    df["Fwd_Return_1d"] = close.pct_change().shift(-1) * 100.0
+    df["Fwd_Price_1d"] = close.shift(-1)
+    # Final cleanup
+    df = df.dropna().reset_index(drop=True)
     return df
 
 def data_diagnostics(df):
