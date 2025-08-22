@@ -90,20 +90,46 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------
-# Stock dictionaries (same as before, trimmed for brevity)
+# Stock dictionaries 
 # ---------------------
 RELIABLE_TICKERS = {
     "US Markets": {
-        "AAPL": "Apple Inc.", "GOOGL": "Alphabet Inc.", "MSFT": "Microsoft Corporation",
-        "BLK": "BlackRock Inc.", "GS": "Goldman Sachs Group Inc.", "STT": "State Street Corporation",
-        "TSLA": "Tesla Inc.", "AMZN": "Amazon.com Inc.", "NVDA": "NVIDIA Corporation",
-        "META": "Meta Platforms Inc.", "NFLX": "Netflix Inc.", "JPM": "JPMorgan Chase & Co.", "V": "Visa Inc."
+        "AAPL": "Apple Inc.",
+        "GOOGL": "Alphabet Inc.",
+        "MSFT": "Microsoft Corporation",
+        "BLK": "BlackRock Inc.",
+        "GS": "Goldman Sachs Group Inc.",
+        "STT": "State Street Corporation",
+        "TSLA": "Tesla Inc.",
+        "AMZN": "Amazon.com Inc.",
+        "NVDA": "NVIDIA Corporation",
+        "META": "Meta Platforms Inc.",
+        "NFLX": "Netflix Inc.",
+        "JPM": "JPMorgan Chase & Co.",
+        "V": "Visa Inc."
     },
     "Indian Markets": {
-        "RELIANCE.NSE": "Reliance Industries", "TCS.NSE": "Tata Consultancy Services", "PARAS.NSE": "Paras Defence and Space Technologies",
-        "INFY.NSE": "Infosys Limited", "HDFCBANK.NSE": "HDFC Bank", "WIPRO.NSE": "Wipro Limited", "ITC.NSE": "ITC Limited",
-        "SBIN.NSE": "State Bank of India", "TATAMOTORS.NSE": "Tata Motors", "TATASTEEL.NSE": "Tata Steel",
-        "KOTAKBANK.NSE": "Kotak Mahindra Bank", "BHARTIARTL.NSE": "Bharti Airtel", "HINDUNILVR.NSE": "Hindustan Unilever"
+        "RELIANCE.NSE": "Reliance Industries",
+        "TCS.NSE": "Tata Consultancy Services",
+        "PARAS.NSE": "Paras Defence and Space Technologies",
+        "INFY.NSE": "Infosys Limited",
+        "HDFCBANK.NSE": "HDFC Bank",
+        "WIPRO.NSE": "Wipro Limited",
+        "ITC.NSE": "ITC Limited",
+        "SBIN.NSE": "State Bank of India",
+        "TATAMOTORS.NSE": "Tata Motors",
+        "TATASTEEL.NSE": "Tata Steel",
+        "KOTAKBANK.NSE": "Kotak Mahindra Bank",
+        "BHARTIARTL.NSE": "Bharti Airtel",
+        "HINDUNILVR.NSE": "Hindustan Unilever"
+    },
+    # Predefined Commodities
+    "commodities" : {
+        "Gold": "GC=F",
+        "Silver": "SI=F",
+        "Crude Oil": "CL=F",
+        "Natural Gas": "NG=F",
+        "Corn": "ZC=F"
     }
 }
 
@@ -332,6 +358,31 @@ def process_stock_data(df, ticker, source):
     # Final cleanup
     df = df.dropna().reset_index(drop=True)
     return df
+
+def fetch_stock_info(ticker: str):
+    """
+    Fetch basic company/stock info using yfinance.
+    Returns a dict with name, sector, industry, market cap, and currency.
+    """
+    try:
+        info = yf.Ticker(ticker).info
+
+        return {
+            "name": info.get("longName", ticker),
+            "sector": info.get("sector", "N/A"),
+            "industry": info.get("industry", "N/A"),
+            "market_cap": info.get("marketCap", "N/A"),
+            "currency": info.get("currency", "USD")
+        }
+    except Exception as e:
+        # Fallback if yfinance fails
+        return {
+            "name": ticker,
+            "sector": "Unknown",
+            "industry": "Unknown",
+            "market_cap": "N/A",
+            "currency": "USD"
+        }
 
 def data_diagnostics(df):
     """Return a dict of diagnostics and a predictability score."""
@@ -752,26 +803,57 @@ def main():
         # Data source
         st.markdown("#### 📡 Data Source")
         data_source_choice = st.selectbox("Select Data Source",
-            ["yfinance", "Alpha Vantage", "Auto (yfinance → Alpha Vantage → Sample)"], index=0)
+            ["yfinance", "Alpha Vantage"], index=0)
+        
+        # ---------------- Asset Selection ----------------
+        st.sidebar.markdown("## 🔎 Select Asset")
+
+        # Predefined Commodities with Icons
+        commodities = {
+            "🪙 Gold": {"ticker": "GC=F", "icon": "🪙"},
+            "🥈 Silver": {"ticker": "SI=F", "icon": "🥈"},
+            "🛢 Crude Oil": {"ticker": "CL=F", "icon": "🛢"},
+            "🔥 Natural Gas": {"ticker": "NG=F", "icon": "🔥"},
+            "🌽 Corn": {"ticker": "ZC=F", "icon": "🌽"}
+        }
+
+        # User chooses asset type
+        option_type = st.radio("Choose Asset Type", ["Stocks/Indices", "Commodities"], horizontal=True)
+
+        if option_type == "Commodities":
+            commodity_choice = st.selectbox("Select Commodity", list(commodities.keys()))
+            ticker = commodities[commodity_choice]["ticker"]
+            icon = commodities[commodity_choice]["icon"]
+
+            # Minimal stock_info for commodities
+            stock_info = {
+                "name": f"{icon} {commodity_choice.replace(icon, '').strip()}",
+                "sector": "Commodity",
+                "industry": "Futures",
+                "market_cap": "—",
+                "currency": "USD"
+            }
+
+        else:
+            # ---------------- Stocks/Indices Flow ----------------
+            ticker = st.text_input("Enter Stock/Index Ticker (e.g., AAPL, GOOGL, ^NSEI)", "AAPL")
+            stock_info = fetch_stock_info(ticker)
+
 
         # Stock selection
         st.markdown("#### 📈 Stock Selection")
-        market = st.selectbox("Select Market", ["US Stocks", "Indian Stocks", "Custom Ticker"])
+        market = st.selectbox("Select Market", ["US Stocks", "Indian Stocks"])
         if market == "US Stocks":
             stock_options = RELIABLE_TICKERS["US Markets"]
             selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
             ticker = selected_stock
             st.info(f"📊 Selected: {stock_options[selected_stock]}")
-        elif market == "Indian Stocks":
+        else:
+            market == "Indian Stocks"
             stock_options = RELIABLE_TICKERS["Indian Markets"]
             selected_stock = st.selectbox("Select Stock", list(stock_options.keys()))
             ticker = selected_stock
             st.info(f"🇮🇳 Selected: {stock_options[selected_stock]}")
-        else:
-            ticker = st.text_input("Enter Stock Ticker", value="AAPL",
-                                   help="Examples: AAPL (US), RELIANCE.NSE (Indian stocks with .NSE extension)")
-            if ticker:
-                st.info("🇮🇳 Indian stock format detected" if ticker.endswith(".NSE") else "🇺🇸 US stock format detected")
 
         # Time period
         st.markdown("#### 📅 Time Period")
@@ -905,14 +987,24 @@ def main():
             if diag['warnings']:
                 st.warning("⚠️ " + "\n⚠️ ".join(diag['warnings']))
 
-            # --- Stock Details ---
-            st.markdown("### 🏢 Stock Details")
+            # --- Stock/Commodity Details ---
+            st.markdown("### 🏢 Asset Details")
             d1, d2 = st.columns(2)
+
             with d1:
                 st.write(f"**🏭 Sector:** {stock_info['sector']}")
-                st.write(f"**🛠 Industry:** {stock_info['industry']}")
+
+                if stock_info["sector"] == "Commodity":
+                    st.write(f"**🌐 Commodity Type:** {stock_info['industry']}")
+                else:
+                    st.write(f"**🛠 Industry:** {stock_info['industry']}")
+
             with d2:
-                st.write(f"**💼 Market Cap:** {stock_info['market_cap']}")
+                if stock_info["sector"] == "Commodity":
+                    st.write("**💼 Market Cap:** —")
+                else:
+                    st.write(f"**💼 Market Cap:** {stock_info['market_cap']}")
+                
                 st.write(f"**💱 Currency:** {stock_info['currency']}")
 
             # --- Key Statistics ---
