@@ -137,6 +137,7 @@ RELIABLE_TICKERS = {
         "PEP": "PEP", # PepsiCo
         "CSCO": "CSCO", # Cisco
         "ORCL": "ORCL" # Oracle
+        
         },
 
 
@@ -166,7 +167,16 @@ RELIABLE_TICKERS = {
         "TATASTEEL": "TATASTEEL.NS",
         "JSWSTEEL": "JSWSTEEL.NS",
         "ULTRACEMCO": "ULTRACEMCO.NS",
-        "ADANIGREEN": "ADANIGREEN.NS",
+        'HCLTECH': 'HCLTECH.NS',
+        'ADANIGREEN': 'ADANIGREEN.NS',
+        'ADANIPORTS': 'ADANIPORTS.NS',
+        'ADANIENT': 'ADANIENT.NS',
+        'BHARTIARTL': 'BHARTIARTL.NS',
+        'WIPRO': 'WIPRO.NS',
+        'TECHM': 'TECHM.NS',
+        'PARAS': 'PARAS.NS',
+        'HAL': 'HAL.NS',
+        'BEL': 'BEL.NS',
         }
 }
 
