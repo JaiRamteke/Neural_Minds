@@ -648,7 +648,50 @@ def get_stock_info(ticker):
         'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
         'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
         'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    },
+    commodities_info = {
+    # Metals
+    'GC=F': {
+        'name': 'Gold Futures',
+        'sector': 'Commodity',
+        'industry': 'Metals',
+        'currency': 'USD',
+        'icon': '🪙'
+    },
+    'SI=F': {
+        'name': 'Silver Futures',
+        'sector': 'Commodity',
+        'industry': 'Metals',
+        'currency': 'USD',
+        'icon': '🥈'
+    },
+
+    # Energy
+    'CL=F': {
+        'name': 'Crude Oil Futures',
+        'sector': 'Commodity',
+        'industry': 'Energy',
+        'currency': 'USD',
+        'icon': '🛢'
+    },
+    'NG=F': {
+        'name': 'Natural Gas Futures',
+        'sector': 'Commodity',
+        'industry': 'Energy',
+        'currency': 'USD',
+        'icon': '🔥'
+    },
+
+    # Agriculture
+    'ZC=F': {
+        'name': 'Corn Futures',
+        'sector': 'Commodity',
+        'industry': 'Agriculture',
+        'currency': 'USD',
+        'icon': '🌽'
     }
+}
+
     base_ticker = ticker.split('.')[0].upper()
     info = stock_info.get(base_ticker, {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'})
     info['market_cap'] = 'N/A'
