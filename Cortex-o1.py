@@ -866,91 +866,74 @@ def main():
 
         # ---------------- Tab1: Stock Analysis ----------------
         with tab1:
-            st.markdown(f"### 📋 {stock_info['name']} ({ticker})")
+            st.markdown(f"## 📋 {stock_info['name']} ({ticker})")
+
             if data_source != 'sample_data':
                 st.info(f"📡 Data Source: {data_source.title()}")
-            c1,c2,c3,c4 = st.columns(4)
-            with c1:
-                st.metric("Current Price", f"{currency_symbol}{current_price_val:.2f}" if current_price_val else "—")
-            with c2:
+
+            # --- Hero Section: Key Market Stats ---
+            st.markdown("### 📊 Market Snapshot")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("💰 Current Price", f"{currency_symbol}{current_price_val:.2f}" if current_price_val else "—")
+            with col2:
                 if len(df) > 1:
                     price_change = float(df['Close'].iloc[-1] - df['Close'].iloc[-2])
-                    pct = price_change/float(df['Close'].iloc[-2])*100.0 if float(df['Close'].iloc[-2])!=0 else 0.0
+                    pct = price_change / float(df['Close'].iloc[-2]) * 100.0 if float(df['Close'].iloc[-2]) != 0 else 0.0
                 else:
                     price_change, pct = 0.0, 0.0
-                st.metric("Price Change", f"{currency_symbol}{price_change:.2f}", f"{pct:.2f}%")
-            with c3:
+                st.metric("📈 Price Change", f"{currency_symbol}{price_change:.2f}", f"{pct:.2f}%")
+            with col3:
                 vol = int(df['Volume'].iloc[-1]) if 'Volume' in df.columns else None
-                st.metric("Volume", f"{vol:,.0f}" if vol else "—")
-            with c4:
-                st.metric("Volatility (annualized %)", f"{volatility*100:.2f}%" if volatility is not None else "—")
+                st.metric("📊 Volume", f"{vol:,.0f}" if vol else "—")
+            with col4:
+                st.metric("📉 Volatility (annualized)", f"{volatility*100:.2f}%" if volatility is not None else "—")
 
-            st.markdown("### 🧰 Data Quality & Predictability")
-            cc1, cc2, cc3 = st.columns(3)
-            with cc1:
+            # --- Data Quality & Predictability ---
+            st.markdown("### 🧮 Data Quality & Predictability")
+            dq1, dq2, dq3 = st.columns(3)
+            with dq1:
                 st.metric("Rows", f"{diag['rows']:,}")
                 st.metric("Date Span", f"{diag['date_span_days']} days")
-            with cc2:
-                st.metric("Max Missing % (any column)", f"{diag['missing_max_pct']*100:.1f}%")
+            with dq2:
+                st.metric("Missing Data (max %)", f"{diag['missing_max_pct']*100:.1f}%")
                 st.metric("Return Variance", f"{diag['ret_var']:.6f}")
-            with cc3:
-                st.metric("Lag‑1 Autocorr (returns)", f"{diag['ret_autocorr_lag1']:.3f}")
+            with dq3:
+                st.metric("Lag-1 Autocorr", f"{diag['ret_autocorr_lag1']:.3f}")
                 st.metric("Predictability Score", f"{diag['predictability_score']:.0f}/100")
+
             if diag['warnings']:
-                st.warning(" • " + "\n • ".join(diag['warnings']))
+                st.warning("⚠️ " + "\n⚠️ ".join(diag['warnings']))
 
-            # Details
-            st.markdown("### 📊 Stock Details")
-            col1,col2 = st.columns(2)
-            with col1:
-                st.write(f"**Sector:** {stock_info['sector']}")
-                st.write(f"**Industry:** {stock_info['industry']}")
-            with col2:
-                st.write(f"**Market Cap:** {stock_info['market_cap']}")
-                st.write(f"**Currency:** {stock_info['currency']}")
+            # --- Stock Details ---
+            st.markdown("### 🏢 Stock Details")
+            d1, d2 = st.columns(2)
+            with d1:
+                st.write(f"**🏭 Sector:** {stock_info['sector']}")
+                st.write(f"**🛠 Industry:** {stock_info['industry']}")
+            with d2:
+                st.write(f"**💼 Market Cap:** {stock_info['market_cap']}")
+                st.write(f"**💱 Currency:** {stock_info['currency']}")
 
-            # Key stats
-            st.markdown("### 📈 Key Statistics")
-            k1,k2,k3,k4 = st.columns(4)
+            # --- Key Statistics ---
+            st.markdown("### 📌 Key Statistics")
+            k1, k2, k3, k4 = st.columns(4)
             with k1:
-                st.metric("52W High", f"{currency_symbol}{float(df['High'].max()):.2f}" if not df.empty else "—")
+                st.metric("🔺 52W High", f"{currency_symbol}{float(df['High'].max()):.2f}" if not df.empty else "—")
             with k2:
-                st.metric("52W Low", f"{currency_symbol}{float(df['Low'].min()):.2f}" if not df.empty else "—")
+                st.metric("🔻 52W Low", f"{currency_symbol}{float(df['Low'].min()):.2f}" if not df.empty else "—")
             with k3:
-                st.metric("Avg Volume", f"{float(df['Volume'].mean()):,.0f}" if not df.empty else "—")
+                st.metric("📊 Avg Volume", f"{float(df['Volume'].mean()):,.0f}" if not df.empty else "—")
             with k4:
                 if 'RSI' in df.columns and not df['RSI'].isna().all():
-                    st.metric("RSI", f"{df['RSI'].iloc[-1]:.1f}")
-            
-            # --- Predicted Next Price & Confidence Signal ---
-            try:
-                X_pred, _, _ = prepare_supervised(df, horizon=1, target_type=st.session_state["target_type"])
-                if not X_pred.empty:
-                    last_row = X_pred.iloc[[-1]]
-                    y_hat = float(final_pipe.predict(last_row)[0])
-
-                    if st.session_state["target_type"] == "return":
-                        next_price = current_price_val * (1 + y_hat/100.0)
+                    rsi_val = df['RSI'].iloc[-1]
+                    if rsi_val > 70:
+                        st.metric("📉 RSI", f"{rsi_val:.1f}", "Overbought ⚠️")
+                    elif rsi_val < 30:
+                        st.metric("📈 RSI", f"{rsi_val:.1f}", "Oversold 🟢")
                     else:
-                        next_price = y_hat
+                        st.metric("📊 RSI", f"{rsi_val:.1f}")
 
-                    st.metric("Predicted Next Price", f"{currency_symbol}{next_price:.2f}")
-
-                    # Compute % change vs current
-                    if current_price_val:
-                        percentage_change = ((next_price - current_price_val) / current_price_val) * 100.0
-
-                        # Prediction confidence
-                        if percentage_change > 2:
-                            st.success("🟢 Strong Bullish Signal")
-                        elif percentage_change > 0:
-                            st.info("🔵 Mild Bullish Signal")
-                        elif percentage_change > -2:
-                            st.warning("🟡 Neutral Signal")
-                        else:
-                            st.error("🔴 Bearish Signal")
-            except Exception as e:
-                st.warning(f"Prediction unavailable in Stock Analysis tab: {e}")
 
         # ---------------- Tab2: Predictions ----------------
         with tab2:
