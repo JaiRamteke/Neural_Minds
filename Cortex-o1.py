@@ -400,51 +400,84 @@ def time_series_cv_score(model, X, y, n_splits=5):
         r2_list.append(r2_score(yte, pred))
     return {"rmse_mean": float(np.mean(rmse_list)), "mae_mean": float(np.mean(mae_list)), "r2_mean": float(np.mean(r2_list))}
 
-def auto_select_model(X, y, selected_names, n_splits=5, do_tune=False, tune_iter=20, target_type="return"):
+def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10, target_type="return"):
+    """
+    Train a single forecasting model with walk-forward CV.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        Feature matrix
+    y : pd.Series
+        Target values
+    model_name : str
+        Name of the model to train (must be in get_model_space())
+    n_splits : int
+        Number of folds for TimeSeriesSplit
+    do_tune : bool
+        Whether to run randomized hyperparameter search
+    tune_iter : int
+        Number of iterations for tuning
+    target_type : str
+        'return' or 'price', for labeling clarity
+
+    Returns
+    -------
+    final_pipe : sklearn Pipeline
+        Trained model pipeline
+    cv_table : pd.DataFrame
+        CV fold metrics (RMSE, MAE, R²)
+    mean_rmse, mean_mae, mean_r2 : float
+        Averaged performance metrics
+    """
+
+    # --- get the chosen model ---
     space = get_model_space()
-    candidates = {k:v for k,v in space.items() if (k in selected_names) or ("Auto" in selected_names)}
-    results = []
-    best = None
-    best_score = np.inf  # minimize RMSE
-    for name, mdl in candidates.items():
-        scores = time_series_cv_score(mdl, X, y, n_splits=n_splits)
-        results.append({"model": name, **scores})
-        if scores["rmse_mean"] < best_score:
-            best_score = scores["rmse_mean"]
-            best = (name, mdl)
-    # Optional fast tuning on the current best tree models
-    tuned_pipe = None
-    best_name, best_model = best
-    if do_tune and best_name in ["Random Forest", "Extra Trees", "Gradient Boosting"]:
-        param_grid = {}
-        if best_name == "Random Forest":
-            param_grid = {"m__n_estimators": [200,400,600,800],
-                          "m__max_depth": [None, 6, 10, 14],
-                          "m__min_samples_leaf": [1,2,4]}
-        elif best_name == "Extra Trees":
-            param_grid = {"m__n_estimators": [300,500,800],
-                          "m__max_depth": [None, 6, 10, 14]}
-        elif best_name == "Gradient Boosting":
-            param_grid = {"m__n_estimators": [200,400,600],
-                          "m__learning_rate": [0.03,0.05,0.08],
-                          "m__max_depth": [2,3,4]}
-        tuned_pipe = Pipeline([("imp", SimpleImputer(strategy="median")), ("sc", StandardScaler()), ("m", best_model)])
-        try:
-            rsearch = RandomizedSearchCV(tuned_pipe, param_distributions=param_grid, n_iter=min(tune_iter, max(3, tune_iter)),
-                                         scoring="neg_root_mean_squared_error", n_jobs=-1, cv=TimeSeriesSplit(n_splits=n_splits),
-                                         random_state=42, verbose=0)
-            rsearch.fit(X, y)
-            tuned_pipe = rsearch.best_estimator_
-            best_score = -rsearch.best_score_
-        except Exception as e:
-            tuned_pipe = None
-    # Final training (best or tuned) using full data
-    final_pipe = tuned_pipe if tuned_pipe is not None else Pipeline([("imp", SimpleImputer(strategy="median")),
-                                                                     ("sc", StandardScaler()),
-                                                                     ("m", best_model)])
-    final_pipe.fit(X, y)
-    cv_table = pd.DataFrame(results).sort_values("rmse_mean")
-    return best_name, final_pipe, cv_table, best_score
+    if model_name not in space:
+        raise ValueError(f"Model {model_name} not found in model space.")
+    base_model, param_grid = space[model_name]
+
+    pipe = Pipeline([
+        ("imputer", SimpleImputer()),
+        ("scaler", StandardScaler()),
+        ("model", base_model)
+    ])
+
+    # --- CV evaluation ---
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    fold_metrics = []
+
+    for fold, (train_idx, test_idx) in enumerate(tscv.split(X), 1):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+        pipe.fit(X_train, y_train)
+        preds = pipe.predict(X_test)
+
+        rmse = mean_squared_error(y_test, preds, squared=False)
+        mae = mean_absolute_error(y_test, preds)
+        r2 = r2_score(y_test, preds)
+        fold_metrics.append((fold, rmse, mae, r2))
+
+    cv_table = pd.DataFrame(fold_metrics, columns=["Fold", "RMSE", "MAE", "R²"])
+    mean_rmse = cv_table["RMSE"].mean()
+    mean_mae = cv_table["MAE"].mean()
+    mean_r2 = cv_table["R²"].mean()
+
+    # --- optional tuning (RandomizedSearch) ---
+    if do_tune and param_grid:
+        from sklearn.model_selection import RandomizedSearchCV
+        search = RandomizedSearchCV(
+            pipe, param_grid, n_iter=tune_iter,
+            scoring="neg_root_mean_squared_error",
+            n_jobs=-1, cv=3, random_state=42
+        )
+        search.fit(X, y)
+        final_pipe = search.best_estimator_
+    else:
+        final_pipe = pipe.fit(X, y)
+
+    return final_pipe, cv_table, mean_rmse, mean_mae, mean_r2
 
 def backtest_holdout(pipe, X, y, test_size=0.2):
     n = len(X)
@@ -667,23 +700,23 @@ def main():
         st.markdown("#### 📅 Time Period")
         period = st.selectbox("Select Period", ["1mo","3mo","6mo","1y","2y","5y"], index=3)
 
-        # New model controls
-        st.markdown("### 🤖 Select Models for Forecasting")
+        # Model selection
+        st.markdown("### 🤖 Select Model for Forecasting")
         available = list(get_model_space().keys())
-        if XGB_AVAILABLE:
-            tooltip = "Auto will test all listed models with walk‑forward CV and pick the best by RMSE."
-        else:
-            tooltip = "Auto will test all built‑in models with walk‑forward CV and pick the best by RMSE."
-        model_choices = st.multiselect("Models", ["Auto (Select Best)"] + available, default=["Auto (Select Best)"],
-                                       help=tooltip)
+        model_choice = st.selectbox(
+            "Model",
+            available,
+            index=0,
+            help="Choose a single model for forecasting."
+        )
 
         st.markdown("#### 🎯 Target Type")
-        target_type = st.radio("What to predict?", ["Return (%)", "Price (level)"], index=0,
+        target_type = st.selectbox("What to predict?", ["Return (%)", "Price (level)"], index=0,
                                help="Return (%) is generally more stable across stocks.")
         st.session_state["target_type"] = "return" if target_type.startswith("Return") else "price"
 
         st.markdown("#### 🧪 Validation")
-        cv_strategy = st.radio("CV Strategy", ["Walk‑forward (5 folds)", "Hold‑out (20%)"], index=0)
+        cv_strategy = st.selectbox("CV Strategy", ["Walk‑forward (5 folds)", "Hold‑out (20%)"], index=0)
         do_tune = st.checkbox("Fast Hyperparameter Tuning", value=False)
         tune_iter = st.slider("Tuning Budget (iterations)", 5, 50, 20)
 
@@ -820,16 +853,11 @@ def main():
             if X.empty:
                 st.error("Not enough data to prepare features.")
                 return
-            # Auto select or manual set
+            # Manual set
             nfolds = 5 if cv_strategy.startswith("Walk") else 3
-            if "Auto" in model_choices or len([m for m in model_choices if m != "Auto (Select Best)"]) == 0:
-                with st.spinner("Selecting best model via walk‑forward CV..."):
-                    best_name, final_pipe, cv_table, best_rmse = auto_select_model(
-                        X, y, selected_names=model_choices, n_splits=nfolds, do_tune=do_tune,
-                        tune_iter=tune_iter, target_type=st.session_state["target_type"]
-                    )
-            else:
-                name = model_choices[0]
+            
+            if "Manual" in model_choice:
+                name = model_choice[0]
                 mdl = get_model_space()[name]
                 final_pipe = Pipeline([("imp", SimpleImputer(strategy="median")),
                                        ("sc", StandardScaler()),
