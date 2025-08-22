@@ -126,20 +126,6 @@ RELIABLE_TICKERS = {
     
 }
 
-# --- Commodities dictionary (yfinance futures tickers) ---
-COMMODITIES = {
-        "GC=F": {"name": "Gold Futures",   "sector": "Commodity", "industry": "Metals",  "currency": "USD", "icon": "🪙"},
-        "SI=F": {"name": "Silver Futures", "sector": "Commodity", "industry": "Metals",  "currency": "USD", "icon": "🥈"},
-        "CL=F": {"name": "Crude Oil",      "sector": "Commodity", "industry": "Energy",  "currency": "USD", "icon": "🛢"},
-        "NG=F": {"name": "Natural Gas",    "sector": "Commodity", "industry": "Energy",  "currency": "USD", "icon": "🔥"},
-        "ZC=F": {"name": "Corn Futures",   "sector": "Commodity", "industry": "Agri",    "currency": "USD", "icon": "🌽"},
-        "ZS=F": {"name": "Soybean Futures","sector": "Commodity", "industry": "Agri",    "currency": "USD", "icon": "🌱"},
-        "ZW=F": {"name": "Wheat Futures", "sector": "Commodity", "industry": "Agri",    "currency": "USD", "icon": "🌾"},
-        "KC=F": {"name": "Coffee Futures", "sector": "Commodity", "industry": "Agri",    "currency": "USD", "icon": "☕"},
-        "CT=F": {"name": "Cotton Futures", "sector": "Commodity", "industry": "Agri",    "currency": "USD", "icon": "🧵"}
-        ,
-}
-
 # ---------------------
 # Helpers: mapping tickers and API checks
 # ---------------------
@@ -150,6 +136,39 @@ def map_ticker_for_source(ticker: str, source: str) -> str:
     if source == "alpha_vantage":
         return base + ".BSE" if ticker.endswith(".NSE") else base
     return ticker
+
+def get_market_cap(ticker: str, source: str = "yfinance"):
+    """
+    Fetch market capitalization for a given ticker from yfinance or Alpha Vantage.
+    
+    Args:
+        ticker (str): Stock ticker symbol
+        source (str): "yfinance" or "alphavantage"
+    
+    Returns:
+        str: Market cap formatted as string, or "N/A"
+    """
+    try:
+        if source.lower() == "yfinance":
+            ticker_obj = yf.Ticker(ticker)
+            mc = ticker_obj.info.get("marketCap", None)
+            return f"${mc:,.0f}" if mc else "N/A"
+
+        elif source.lower() == "alphavantage":
+            url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
+            r = requests.get(url)
+            if r.status_code == 200:
+                data = r.json()
+                mc = data.get("MarketCapitalization", None)
+                return f"${int(mc):,}" if mc else "N/A"
+            else:
+                return "N/A"
+
+        else:
+            return "N/A"
+
+    except Exception as e:
+        return "N/A"
 
 def test_api_connections():
     status = {'yfinance': {'available': YFINANCE_AVAILABLE, 'working': False, 'message': ""},
@@ -626,7 +645,7 @@ def iterative_forecast(df, pipe, days=1, target_type="return"):
     return preds, fc_dates
 
 # ---------------------
-# Unified Asset Info (Stocks + Commodities)
+# Stocks Info
 # ---------------------
 def get_stock_info(ticker):
     stock_dict = {
@@ -657,21 +676,14 @@ def get_stock_info(ticker):
         'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
     }
 
-    commodities_dict = {
-        'GC=F': {'name': 'Gold Futures', 'sector': 'Commodity', 'industry': 'Metals', 'currency': 'USD', 'icon': '🪙'},
-        'SI=F': {'name': 'Silver Futures', 'sector': 'Commodity', 'industry': 'Metals', 'currency': 'USD', 'icon': '🥈'},
-        'CL=F': {'name': 'Crude Oil Futures', 'sector': 'Commodity', 'industry': 'Energy', 'currency': 'USD', 'icon': '🛢'},
-        'NG=F': {'name': 'Natural Gas Futures', 'sector': 'Commodity', 'industry': 'Energy', 'currency': 'USD', 'icon': '🔥'},
-        'ZC=F': {'name': 'Corn Futures', 'sector': 'Commodity', 'industry': 'Agriculture', 'currency': 'USD', 'icon': '🌽'},
-    }
-
     base_ticker = ticker.split('.')[0].upper()
-
-    # merge both dicts
-    all_info = {**stock_dict, **commodities_dict}
-
-    info = all_info.get(base_ticker, {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'})
-    info['market_cap'] = info.get('market_cap', 'N/A')
+    info = stock_dict.get(base_ticker, {
+        'name': ticker,
+        'sector': 'Unknown',
+        'industry': 'Unknown',
+        'currency': 'USD'
+    })
+    info['market_cap'] = get_market_cap(base_ticker, source=data_source)
     return info
 
 # Safe display helper
@@ -824,41 +836,6 @@ def main():
         st.markdown("#### 📡 Data Source")
         data_source_choice = st.selectbox("Select Data Source",
             ["yfinance", "Alpha Vantage"], index=0)
-        
-        # ---------------- Asset Selection ----------------
-        st.sidebar.markdown("## 🔎 Select Asset")
-
-        # Predefined Commodities with Icons
-        commodities = {
-            "🪙 Gold": {"ticker": "GC=F", "icon": "🪙"},
-            "🥈 Silver": {"ticker": "SI=F", "icon": "🥈"},
-            "🛢 Crude Oil": {"ticker": "CL=F", "icon": "🛢"},
-            "🔥 Natural Gas": {"ticker": "NG=F", "icon": "🔥"},
-            "🌽 Corn": {"ticker": "ZC=F", "icon": "🌽"}
-        }
-
-        # User chooses asset type
-        option_type = st.selectbox("Choose Asset Type", ["Stocks/Indices", "Commodities"])
-
-        if option_type == "Commodities":
-            commodity_choice = st.selectbox("Select Commodity", list(commodities.keys()))
-            ticker = commodities[commodity_choice]["ticker"]
-            icon = commodities[commodity_choice]["icon"]
-
-            # Minimal stock_info for commodities
-            stock_info = {
-                "name": f"{icon} {commodity_choice.replace(icon, '').strip()}",
-                "sector": "Commodity",
-                "industry": "Futures",
-                "market_cap": "—",
-                "currency": "USD"
-            }
-
-        else:
-            # ---------------- Stocks/Indices Flow ----------------
-            ticker = st.text_input("Enter Stock/Index Ticker (e.g., AAPL, GOOGL, ^NSEI)", "AAPL")
-            stock_info = fetch_stock_info(ticker)
-
 
         # Stock selection
         st.markdown("#### 📈 Stock Selection")
@@ -950,7 +927,7 @@ def main():
             st.error("❌ Unable to process stock data. Please try again.")
             return
 
-        stock_info = get_stock_info(ticker)
+        stock_info = get_stock_info(ticker, data_source)
         currency = stock_info.get('currency', 'USD')
         currency_symbol = '$' if currency == 'USD' else 'INR '
 
