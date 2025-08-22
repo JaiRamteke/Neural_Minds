@@ -842,6 +842,36 @@ def main():
             with k4:
                 if 'RSI' in df.columns and not df['RSI'].isna().all():
                     st.metric("RSI", f"{df['RSI'].iloc[-1]:.1f}")
+            
+            # --- Predicted Next Price & Confidence Signal ---
+            try:
+                X_pred, _, _ = prepare_supervised(df, horizon=1, target_type=st.session_state["target_type"])
+                if not X_pred.empty:
+                    last_row = X_pred.iloc[[-1]]
+                    y_hat = float(final_pipe.predict(last_row)[0])
+
+                    if st.session_state["target_type"] == "return":
+                        next_price = current_price_val * (1 + y_hat/100.0)
+                    else:
+                        next_price = y_hat
+
+                    st.metric("Predicted Next Price", f"{currency_symbol}{next_price:.2f}")
+
+                    # Compute % change vs current
+                    if current_price_val:
+                        percentage_change = ((next_price - current_price_val) / current_price_val) * 100.0
+
+                        # Prediction confidence
+                        if percentage_change > 2:
+                            st.success("🟢 Strong Bullish Signal")
+                        elif percentage_change > 0:
+                            st.info("🔵 Mild Bullish Signal")
+                        elif percentage_change > -2:
+                            st.warning("🟡 Neutral Signal")
+                        else:
+                            st.error("🔴 Bearish Signal")
+            except Exception as e:
+                st.warning(f"Prediction unavailable in Stock Analysis tab: {e}")
 
         # ---------------- Tab2: Predictions ----------------
         with tab2:
@@ -934,6 +964,17 @@ def main():
                 c1.metric("Current Price", f"{currency_symbol}{current_price_num:.2f}")
                 c2.metric("Predicted Price (1d)", f"{currency_symbol}{y_hat:.2f}", f"{currency_symbol}{delta:.2f}")
                 c3.metric("Expected Change", f"{pct:.2f}%")
+
+                # Prediction confidence (Price case)
+                if pct is not None:
+                    if pct > 2:
+                        st.success("🟢 Strong Bullish Signal")
+                    elif pct > 0:
+                        st.info("🔵 Mild Bullish Signal")
+                    elif pct > -2:
+                        st.warning("🟡 Neutral Signal")
+                    else:
+                        st.error("🔴 Bearish Signal")
 
             # Multi‑day iterative forecast
             st.markdown("### 📈 Multi‑day Forecast")
