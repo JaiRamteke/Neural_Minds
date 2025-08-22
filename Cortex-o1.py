@@ -892,7 +892,7 @@ def render_explainable_ai_tab(final_pipe, df):
 
             # Adjust units based on target_type
             target_type = st.session_state["target_type"]
-            currency_symbol = stock_info.get("currency_symbol", "$") if "stock_info" in globals() else "$"
+            currency_symbol = get_stock_info.get("currency_symbol", "$") if "stock_info" in globals() else "$"
 
             narrative = []
             for feat, val in top_features:
@@ -1130,7 +1130,7 @@ def main():
                 else:
                     st.write(f"**💼 Market Cap:** {stock_info['market_cap']}")
                 
-                st.write(f"**💱 Currency:** {stock_info['currency']}")
+                st.write(f"**💵 Currency:** {stock_info['currency']}")
 
             # --- Key Statistics ---
             st.markdown("### 📌 Key Statistics")
