@@ -860,15 +860,28 @@ def main():
                 name = model_choice[0]
                 mdl = get_model_space()[name]
                 final_pipe = Pipeline([("imp", SimpleImputer(strategy="median")),
-                                       ("sc", StandardScaler()),
-                                       ("m", mdl)])
+                                    ("sc", StandardScaler()),
+                                    ("m", mdl)])
                 if cv_strategy.startswith("Walk"):
                     cv_scores = time_series_cv_score(mdl, X, y, n_splits=nfolds)
                     cv_table = pd.DataFrame([{"model": name, **cv_scores}])
                 else:
                     cv_table = pd.DataFrame()
                 best_name = name
+            else:
+                # Normal case (any selected model)
+                mdl = get_model_space()[model_choice]
+                final_pipe = Pipeline([("imp", SimpleImputer(strategy="median")),
+                                    ("sc", StandardScaler()),
+                                    ("m", mdl)])
+                if cv_strategy.startswith("Walk"):
+                    cv_scores = time_series_cv_score(mdl, X, y, n_splits=nfolds)
+                    cv_table = pd.DataFrame([{"model": model_choice, **cv_scores}])
+                else:
+                    cv_table = pd.DataFrame()
+                best_name = model_choice
 
+            # --- Safe usage of best_name everywhere ---
             st.success(f"✅ Selected Model: **{best_name}**  |  Target: **{st.session_state['target_type']}**")
             if not cv_table.empty:
                 st.markdown("#### 🧪 Cross‑Validation Summary (lower RMSE is better)")
