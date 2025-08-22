@@ -278,10 +278,12 @@ def calculate_rsi(prices, window=14):
 def process_stock_data(df, ticker, source):
     if df is None or df.empty:
         return None
+    # 🔹 Drop duplicate columns (common issue with Yahoo/nested downloads)
     df = df.loc[:, ~df.columns.duplicated()]
+    # 🔹 Ensure Date handling
     if 'Date' not in df.columns and df.index.name == 'Date':
         df = df.reset_index()
-    # Technicals
+    # --- Technical Indicators ---
     df['MA_20'] = df['Close'].rolling(window=20).mean()
     df['MA_50'] = df['Close'].rolling(window=50).mean()
     df['RSI'] = calculate_rsi(df['Close'])
@@ -290,16 +292,20 @@ def process_stock_data(df, ticker, source):
     df['Vol_5'] = df['Log_Return'].rolling(5).std()
     df['Vol_20'] = df['Log_Return'].rolling(20).std()
     df['Mom_5'] = df['Close'].pct_change(5)
-    close = df['Close'].astype(float)
-    ma20  = df['MA_20'].astype(float)
-    std20 = df['Close'].rolling(window=20).std().astype(float)
-    df['Z_20'] = (df['Close'] - df['MA_20']) / (df['Close'].rolling(window=20).std() + 1e-9)
-    df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
-    for i in [1,2,3,5]:
-        df[f'Close_Lag_{i}'] = df['Close'].shift(i)
-        df[f'Ret_Lag_{i}'] = df['Price_Change'].shift(i)
-    df = df.dropna().reset_index(drop=True)
-    df.attrs = {'source': source, 'ticker': ticker, 'last_updated': datetime.now()}
+    # --- Safe Z-score (fixed to avoid ValueError) ---
+    close = pd.Series(df['Close'].values, index=df.index)
+    ma20  = pd.Series(df['MA_20'].values, index=df.index)
+    std20 = pd.Series(df['Close'].rolling(window=20).std().values, index=df.index)
+    df['Z_20'] = (close - ma20) / (std20 + 1e-9)
+    # Volume moving average
+    if 'Volume' in df.columns:
+        df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
+    else:
+        df['Volume'] = np.nan
+        df['Volume_MA'] = np.nan
+    # Forward returns for training
+    df['Fwd_Return_1d'] = df['Close'].pct_change().shift(-1) * 100.0
+    df['Fwd_Price_1d'] = df['Close'].shift(-1)
     return df
 
 def data_diagnostics(df):
