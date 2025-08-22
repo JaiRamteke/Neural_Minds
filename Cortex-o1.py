@@ -139,8 +139,6 @@ RELIABLE_TICKERS = {
         "ORCL": "ORCL" # Oracle
 
         },
-
-
         # ---------------- Indian Stocks ----------------
         "Indian Markets": {
         "RELIANCE": "RELIANCE.NS",
@@ -214,39 +212,33 @@ def stock_selection_ui():
 # ---------------------
 def map_ticker_for_source(ticker: str, source: str) -> str:
     base = ticker.split('.')[0].upper()
-    if source == "yfinance":
-        return base + ".NS" if ticker.endswith(".NSE") else base
-    if source == "alpha_vantage":
-        return base + ".BSE" if ticker.endswith(".NSE") else base
-    return ticker
+
+    if source.lower() == "yfinance":
+        # yfinance expects .NS for Indian stocks
+        return f"{base}.NS" if ticker.endswith(".NSE") or ticker.endswith(".NS") else base
+
+    elif source.lower() in ["alpha_vantage", "alphavantage"]:
+        # Alpha Vantage (limited) supports some Indian tickers as .BSE
+        return f"{base}.BSE" if ticker.endswith(".NSE") or ticker.endswith(".NS") else base
+
+    return ticker.upper()
 
 def get_market_cap(ticker: str, source: str = "yfinance") -> str:
-    """
-    Fetch market capitalization for a given ticker from yfinance or Alpha Vantage.
-
-    Args:
-        ticker (str): Stock ticker symbol
-        source (str): "yfinance" or "alphavantage"
-
-    Returns:
-        str: Market cap formatted as string, or "N/A"
-    """
     try:
+        mapped_ticker = map_ticker_for_source(ticker, source)
+
         if source.lower() == "yfinance":
-            ticker_obj = yf.Ticker(ticker)
-            mc = ticker_obj.info.get("marketCap")
+            ticker_obj = yf.Ticker(mapped_ticker)
+            mc = ticker_obj.info.get("marketCap", None)
             return f"${mc:,.0f}" if mc else "N/A"
 
-        elif source.lower() == "alphavantage":
-            url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-            r = requests.get(url, timeout=10)
+        elif source.lower() in ["alpha_vantage", "alphavantage"]:
+            url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={mapped_ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
+            r = requests.get(url)
             if r.status_code == 200:
                 data = r.json()
-                mc = data.get("MarketCapitalization")
-                if mc and mc.isdigit():
-                    return f"${int(mc):,}"
-                else:
-                    return "N/A"
+                mc = data.get("MarketCapitalization", None)
+                return f"${int(mc):,}" if mc else "N/A"
             else:
                 return "N/A"
 
@@ -472,10 +464,6 @@ def process_stock_data(df, ticker, source):
     return df
 
 def fetch_stock_info(ticker: str):
-    """
-    Fetch basic company/stock info using yfinance.
-    Returns a dict with name, sector, industry, market cap, and currency.
-    """
     try:
         info = yf.Ticker(ticker).info
 
