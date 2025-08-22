@@ -229,21 +229,26 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
 
         if source.lower() == "yfinance":
             ticker_obj = yf.Ticker(mapped_ticker)
-            mc = ticker_obj.info.get("marketCap", None)
+            mc = ticker_obj.info.get("marketCap")
             return f"${mc:,.0f}" if mc else "N/A"
 
         elif source.lower() in ["alpha_vantage", "alphavantage"]:
             url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={mapped_ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-            r = requests.get(url)
+            r = requests.get(url, timeout=10)
             if r.status_code == 200:
                 data = r.json()
-                mc = data.get("MarketCapitalization", None)
-                return f"${int(mc):,}" if mc else "N/A"
+                mc = data.get("MarketCapitalization")
+                if mc and mc.isdigit():
+                    return f"${int(mc):,}"
+                else:
+                    # Fallback to yfinance if AV gives nothing
+                    ticker_obj = yf.Ticker(map_ticker_for_source(ticker, "yfinance"))
+                    mc = ticker_obj.info.get("marketCap")
+                    return f"${mc:,.0f}" if mc else "N/A"
             else:
                 return "N/A"
 
-        else:
-            return "N/A"
+        return "N/A"
 
     except Exception:
         return "N/A"
