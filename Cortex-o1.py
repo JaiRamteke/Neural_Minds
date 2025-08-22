@@ -1055,6 +1055,12 @@ def main():
         if df is None or df.empty:
             st.error("❌ Unable to process stock data. Please try again.")
             return
+        
+        # Display data source info
+        if data_source == 'sample_data':
+            st.warning("⚠️ Using sample data for demonstration. Real-time data unavailable.")
+        else:
+            st.success(f"✅ Successfully loaded {len(df)} data points for {ticker} from {data_source}")
 
         stock_info = get_stock_info(ticker, data_source)
         currency = stock_info.get('currency', 'USD')
