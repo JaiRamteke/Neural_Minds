@@ -661,17 +661,28 @@ COMMODITIES_INFO = {
     'ZC=F': {'name': 'Corn Futures', 'sector': 'Commodity', 'industry': 'Agriculture', 'currency': 'USD', 'icon': '🌽'},
 }
 
-def get_stock_info(ticker: str):
+def get_stock_info(ticker):
+    stock_info = {
+        # ... your stocks mapping here ...
+    }
+
+    commodities_info = {
+        # ... your commodities mapping here ...
+    }
+
     base_ticker = ticker.split('.')[0].upper()
 
-    if base_ticker in STOCK_INFO:
-        info = STOCK_INFO[base_ticker]
-    elif ticker in COMMODITIES_INFO:
-        info = COMMODITIES_INFO[ticker]
+    # Check commodities first
+    if ticker in commodities_info:
+        info = commodities_info[ticker]
     else:
-        info = {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'}
+        info = stock_info.get(
+            base_ticker,
+            {'name': ticker, 'sector': 'Unknown', 'industry': 'Unknown', 'currency': 'USD'}
+        )
 
-    info['market_cap'] = info.get('market_cap', 'N/A')  # Commodities don’t have market cap
+    # Add market_cap placeholder for uniformity
+    info['market_cap'] = info.get('market_cap', 'N/A')
     return info
 
 # Safe display helper
