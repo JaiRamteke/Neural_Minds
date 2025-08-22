@@ -278,6 +278,7 @@ def calculate_rsi(prices, window=14):
 def process_stock_data(df, ticker, source):
     if df is None or df.empty:
         return None
+    df = df.loc[:, ~df.columns.duplicated()]
     if 'Date' not in df.columns and df.index.name == 'Date':
         df = df.reset_index()
     # Technicals
