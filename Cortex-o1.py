@@ -93,73 +93,70 @@ st.markdown("""
 # Stock dictionaries 
 # ---------------------
 RELIABLE_TICKERS = {
-    # ---------------- US Stocks ----------------
-    "AAPL": "AAPL",       # Apple
-    "MSFT": "MSFT",       # Microsoft
-    "GOOGL": "GOOGL",     # Alphabet
-    "AMZN": "AMZN",       # Amazon
-    "META": "META",       # Meta
-    "TSLA": "TSLA",       # Tesla
-    "BRK.B": "BRK-B",     # Berkshire Hathaway (yfinance needs BRK-B instead of BRK.B)
-    "NVDA": "NVDA",       # NVIDIA
-    "JPM": "JPM",         # JPMorgan
-    "V": "V",             # Visa
-    "NFLX": "NFLX",       # Netflix
-    "DIS": "DIS",         # Disney
-    "XOM": "XOM",         # ExxonMobil
-    "CVX": "CVX",         # Chevron
-    "JNJ": "JNJ",         # Johnson & Johnson
-    "PFE": "PFE",         # Pfizer
-    "MRK": "MRK",         # Merck
-    "UNH": "UNH",         # UnitedHealth
-    "LLY": "LLY",         # Eli Lilly
-    "BA": "BA",           # Boeing
-    "LMT": "LMT",         # Lockheed Martin
-    "NOC": "NOC",         # Northrop Grumman
-    "F": "F",             # Ford
-    "GM": "GM",           # General Motors
-    "WMT": "WMT",         # Walmart
-    "PG": "PG",           # Procter & Gamble
-    "BAC": "BAC",         # Bank of America
-    "KO": "KO",           # Coca-Cola
-    "PEP": "PEP",         # PepsiCo
-    "CSCO": "CSCO",       # Cisco
-    "ORCL": "ORCL",       # Oracle
+# ---------------- US Stocks ----------------
+        "US Markets": {
+        "AAPL": "AAPL", # Apple
+        "MSFT": "MSFT", # Microsoft
+        "GOOGL": "GOOGL", # Alphabet
+        "AMZN": "AMZN", # Amazon
+        "META": "META", # Meta
+        "TSLA": "TSLA", # Tesla
+        "BRK.B": "BRK-B", # Berkshire Hathaway (yfinance needs BRK-B instead of BRK.B)
+        "NVDA": "NVDA", # NVIDIA
+        "JPM": "JPM", # JPMorgan
+        "V": "V", # Visa
+        "NFLX": "NFLX", # Netflix
+        "DIS": "DIS", # Disney
+        "XOM": "XOM", # ExxonMobil
+        "CVX": "CVX", # Chevron
+        "JNJ": "JNJ", # Johnson & Johnson
+        "PFE": "PFE", # Pfizer
+        "MRK": "MRK", # Merck
+        "UNH": "UNH", # UnitedHealth
+        "LLY": "LLY", # Eli Lilly
+        "BA": "BA", # Boeing
+        "LMT": "LMT", # Lockheed Martin
+        "NOC": "NOC", # Northrop Grumman
+        "F": "F", # Ford
+        "GM": "GM", # General Motors
+        "WMT": "WMT", # Walmart
+        "PG": "PG", # Procter & Gamble
+        "BAC": "BAC", # Bank of America
+        "KO": "KO", # Coca-Cola
+        "PEP": "PEP", # PepsiCo
+        "CSCO": "CSCO", # Cisco
+        "ORCL": "ORCL" # Oracle
+        },
 
-    # ---------------- Indian Stocks ----------------
-    "RELIANCE": "RELIANCE.NS",
-    "ONGC": "ONGC.NS",
-    "TCS": "TCS.NS",
-    "INFY": "INFY.NS",
-    "HDFCBANK": "HDFCBANK.NS",
-    "ICICIBANK": "ICICIBANK.NS",
-    "KOTAKBANK": "KOTAKBANK.NS",
-    "SBIN": "SBIN.NS",
-    "AXISBANK": "AXISBANK.NS",
-    "BAJFINANCE": "BAJFINANCE.NS",
-    "HINDUNILVR": "HINDUNILVR.NS",
-    "ITC": "ITC.NS",
-    "ASIANPAINT": "ASIANPAINT.NS",
-    "NESTLEIND": "NESTLEIND.NS",
-    "MARUTI": "MARUTI.NS",
-    "TATAMOTORS": "TATAMOTORS.NS",
-    "M&M": "M&M.NS",
-    "SUNPHARMA": "SUNPHARMA.NS",
-    "DRREDDY": "DRREDDY.NS",
-    "CIPLA": "CIPLA.NS",
-    "APOLLOHOSP": "APOLLOHOSP.NS",
-    "TATASTEEL": "TATASTEEL.NS",
-    "JSWSTEEL": "JSWSTEEL.NS",
-    "ULTRACEMCO": "ULTRACEMCO.NS",
-    "ADANIGREEN": "ADANIGREEN.NS",
-    "ADANIPORTS": "ADANIPORTS.NS",
-    "ADANIENT": "ADANIENT.NS",
-    "BHARTIARTL": "BHARTIARTL.NS",
-    "WIPRO": "WIPRO.NS",
-    "TECHM": "TECHM.NS",
-    "PARAS": "PARAS.NS",
-    "HAL": "HAL.NS",
-    "BEL": "BEL.NS",
+
+        # ---------------- Indian Stocks ----------------
+        "Indian Markets": {
+        "RELIANCE": "RELIANCE.NS",
+        "ONGC": "ONGC.NS",
+        "TCS": "TCS.NS",
+        "INFY": "INFY.NS",
+        "HDFCBANK": "HDFCBANK.NS",
+        "ICICIBANK": "ICICIBANK.NS",
+        "KOTAKBANK": "KOTAKBANK.NS",
+        "SBIN": "SBIN.NS",
+        "AXISBANK": "AXISBANK.NS",
+        "BAJFINANCE": "BAJFINANCE.NS",
+        "HINDUNILVR": "HINDUNILVR.NS",
+        "ITC": "ITC.NS",
+        "ASIANPAINT": "ASIANPAINT.NS",
+        "NESTLEIND": "NESTLEIND.NS",
+        "MARUTI": "MARUTI.NS",
+        "TATAMOTORS": "TATAMOTORS.NS",
+        "M&M": "M&M.NS",
+        "SUNPHARMA": "SUNPHARMA.NS",
+        "DRREDDY": "DRREDDY.NS",
+        "CIPLA": "CIPLA.NS",
+        "APOLLOHOSP": "APOLLOHOSP.NS",
+        "TATASTEEL": "TATASTEEL.NS",
+        "JSWSTEEL": "JSWSTEEL.NS",
+        "ULTRACEMCO": "ULTRACEMCO.NS",
+        "ADANIGREEN": "ADANIGREEN.NS",
+        }
 }
 
 # ---------------------
