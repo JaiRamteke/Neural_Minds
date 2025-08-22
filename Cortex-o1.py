@@ -664,29 +664,46 @@ def render_explainable_ai_tab(final_pipe, df):
             shap_values = explainer(last_row)
 
             st.write("**Why the latest prediction looks this way:**")
-            fig_local = shap.plots.waterfall(shap_values[0], show=False)
+
+            shap.plots.waterfall(shap_values[0], show=False)
+            fig_local = plt.gcf()   # ✅ get the figure object
             st.pyplot(fig_local, clear_figure=True)
 
             # --------- Plain English Narrative ---------
             shap_contribs = dict(zip(X_all.columns, shap_values.values[0]))
             top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
 
+            # Adjust units based on target_type
+            target_type = st.session_state["target_type"]
+            currency_symbol = stock_info.get("currency_symbol", "$") if "stock_info" in globals() else "$"
+
             narrative = []
             for feat, val in top_features:
                 direction = "increased" if val > 0 else "decreased"
-                pct = f"{abs(val):.2f}"
-                narrative.append(f"- **{feat}** {direction} the forecast by ~{pct} units")
+
+                if target_type == "return":
+                    value_str = f"{abs(val):.2f}%"
+                else:  # price prediction
+                    value_str = f"{currency_symbol}{abs(val):.2f}"
+
+                narrative.append(f"- **{feat}** {direction} the forecast by ~{value_str}")
 
             st.markdown("#### 📝 Narrative Explanation")
             st.write("The model's latest prediction was mainly influenced by:")
             for line in narrative:
                 st.write(line)
 
+            # Net effect conclusion
             net_effect = sum(shap_contribs.values())
-            if net_effect > 0:
-                st.success("Overall: Features combined to push the forecast **UP (Bullish Bias)**")
+            if target_type == "return":
+                conclusion_val = f"{net_effect:.2f}%"
             else:
-                st.error("Overall: Features combined to push the forecast **DOWN (Bearish Bias)**")
+                conclusion_val = f"{currency_symbol}{net_effect:.2f}"
+
+            if net_effect > 0:
+                st.success(f"Overall: Features combined to push the forecast **UP (Bullish Bias)** by {conclusion_val}")
+            else:
+                st.error(f"Overall: Features combined to push the forecast **DOWN (Bearish Bias)** by {conclusion_val}")
 
         except Exception as e:
             st.error(f"Local explanation failed: {e}")
