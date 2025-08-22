@@ -647,7 +647,9 @@ def iterative_forecast(df, pipe, days=1, target_type="return"):
 # ---------------------
 # Stocks Info
 # ---------------------
-def get_stock_info(ticker):
+def get_stock_info(ticker, data_source="yfinance"):
+    base_ticker = ticker.split(".")[0].upper()
+    
     stock_dict = {
         'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
         'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
