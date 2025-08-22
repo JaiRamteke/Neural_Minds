@@ -290,7 +290,10 @@ def process_stock_data(df, ticker, source):
     df['Vol_5'] = df['Log_Return'].rolling(5).std()
     df['Vol_20'] = df['Log_Return'].rolling(20).std()
     df['Mom_5'] = df['Close'].pct_change(5)
-    df['Z_20'] = (df['Close'] - df['MA_20']) / (df['Close'].rolling(20).std() + 1e-9)
+    close = df['Close'].astype(float)
+    ma20  = df['MA_20'].astype(float)
+    std20 = df['Close'].rolling(window=20).std().astype(float)
+    df['Z_20'] = (close - ma20) / (std20 + 1e-9)
     df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
     for i in [1,2,3,5]:
         df[f'Close_Lag_{i}'] = df['Close'].shift(i)
