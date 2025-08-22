@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -377,7 +376,6 @@ def prepare_supervised(df, horizon=1, target_type="return"):
 def get_model_space():
     models = {
         "Random Forest": RandomForestRegressor(n_estimators=400, max_depth=None, min_samples_leaf=2, random_state=42, n_jobs=-1),
-        "Extra Trees": ExtraTreesRegressor(n_estimators=500, random_state=42, n_jobs=-1),
         "Gradient Boosting": GradientBoostingRegressor(random_state=42),
         "Ridge": Ridge(alpha=1.0, random_state=42),
         "Lasso": Lasso(alpha=0.001, random_state=42)
@@ -916,6 +914,18 @@ def main():
                 c1.metric("Current Price", f"{currency_symbol}{current_price_num:.2f}")
                 c2.metric("Predicted Return (1d)", f"{y_hat:.2f}%")
                 c3.metric("Predicted Price (1d)", f"{currency_symbol}{next_price:.2f}", f"{currency_symbol}{delta:.2f}")
+
+                # Prediction confidence
+                if pct is not None:
+                    if pct > 2:
+                        st.success("🟢 Strong Bullish Signal")
+                    elif pct > 0:
+                        st.info("🔵 Mild Bullish Signal")
+                    elif pct > -2:
+                        st.warning("🟡 Neutral Signal")
+                    else:
+                        st.error("🔴 Bearish Signal")
+
             else:
                 current_price_num = float(df['Close'].iloc[-1])
                 delta = y_hat - current_price_num
@@ -1069,32 +1079,84 @@ def main():
         """, unsafe_allow_html=True)
 
     else:
-        st.markdown("""
-            <h2 style='text-align:center;font-size:40px;font-weight:800;
-            background:-webkit-linear-gradient(45deg,#4facfe,#00f2fe);-webkit-background-clip:text;
-            -webkit-text-fill-color:transparent;margin-bottom:20px;'>🧠 Cortex-o1 Predictive Model</h2>""", unsafe_allow_html=True)
+        # Welcome screen
+        st.markdown(
+            """
+            <h2 style='
+                text-align: center;
+                font-size: 40px;
+                font-weight: 800;
+                background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                text-decoration: none;
+                margin-bottom: 20px;
+            '>
+                🧠 Cortex-o1 Predictive Model
+            </h2>
+            """,
+            unsafe_allow_html=True
+        )
+
         col1, col2 = st.columns(2)
+
         with col1:
             st.markdown("""
                 ### ✨ Premium Features:
                 - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
-                - 🤖 **Auto Model Selection** with walk‑forward CV
-                - 📊 **Technical Indicators** & enhanced features (returns, volatility, momentum)
-                - 🎯 **Return or Price Targets** with proper next‑day alignment
-                - 📈 **Backtests & Forecasts**: Hold‑out plot and multi‑day iterative forecasting
-                - 🧪 **Diagnostics**: Predictability score and data quality warnings
-            """)
+                - 🤖 **Advanced AI Models**: Machine learning-powered predictions
+                - 📊 **Comprehensive Analysis**: Technical indicators & market insights
+                - 🎨 **Premium Interface**: Beautiful, responsive dark theme
+                - 📈 **Real-time Charts**: Interactive Plotly visualizations
+                - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
+
+                ### 🌍 Global Market Coverage:
+                **🇺🇸 US Stocks:**
+                - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
+                - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
+                - Meta (META), Netflix (NFLX)
+                - JPMorgan (JPM), Visa (V)
+                - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
+
+                **🇮🇳 Indian Stocks:**
+                - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
+                - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
+                - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
+                - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
+                - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
+                """)
+
         with col2:
             st.markdown("""
                 ### 🎯 How It Works:
-                1. Choose your **stock** and **period**
-                2. Select **target** (Return or Price) and **CV strategy**
-                3. Use **Auto (Select Best)** or pick a model
-                4. Generate **predictions** and review **backtests**
-                5. Inspect **Explainable AI** to understand drivers
-            """)
-        st.markdown("---")
-        st.markdown("👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI‑driven stock prediction!**")
+                1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
+                2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
+                3. 🤖 **AI Analysis**: ML models learn market patterns  
+                4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
+                5. 📈 **Visualize Results**: Interactive charts & detailed analytics
+
+                ### 🛠️ Technical Features:
+                - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
+                - 🔁 **Cross-validation**: Performance metrics built-in  
+                - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
+                - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
+
+                ### 💡 Pro Tips:
+                - 📅 Use longer timeframes (1y+) for more reliable predictions  
+                - 🌍 Consider external market/economic context  
+                - ⏳ Compare predictions across different timeframes  
+                - 🛡️ Always diversify your portfolio  
+                """)
+                        
+        # 👇 Bottom full-width message
+        st.markdown(
+            """
+            ---
+            
+👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+            """,
+            unsafe_allow_html=True
+)
 
 if __name__ == "__main__":
     main()
