@@ -818,7 +818,7 @@ def main():
         }
 
         # User chooses asset type
-        option_type = st.selectbox("Choose Asset Type", ["Stocks/Indices", "Commodities"], horizontal=True)
+        option_type = st.selectbox("Choose Asset Type", ["Stocks/Indices", "Commodities"])
 
         if option_type == "Commodities":
             commodity_choice = st.selectbox("Select Commodity", list(commodities.keys()))
