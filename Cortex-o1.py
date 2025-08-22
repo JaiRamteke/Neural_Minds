@@ -137,7 +137,7 @@ RELIABLE_TICKERS = {
         "PEP": "PEP", # PepsiCo
         "CSCO": "CSCO", # Cisco
         "ORCL": "ORCL" # Oracle
-        
+
         },
 
 
@@ -220,37 +220,40 @@ def map_ticker_for_source(ticker: str, source: str) -> str:
         return base + ".BSE" if ticker.endswith(".NSE") else base
     return ticker
 
-def get_market_cap(ticker: str, source: str = "yfinance"):
+def get_market_cap(ticker: str, source: str = "yfinance") -> str:
     """
     Fetch market capitalization for a given ticker from yfinance or Alpha Vantage.
-    
+
     Args:
         ticker (str): Stock ticker symbol
         source (str): "yfinance" or "alphavantage"
-    
+
     Returns:
         str: Market cap formatted as string, or "N/A"
     """
     try:
         if source.lower() == "yfinance":
             ticker_obj = yf.Ticker(ticker)
-            mc = ticker_obj.info.get("marketCap", None)
+            mc = ticker_obj.info.get("marketCap")
             return f"${mc:,.0f}" if mc else "N/A"
 
         elif source.lower() == "alphavantage":
             url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-            r = requests.get(url)
+            r = requests.get(url, timeout=10)
             if r.status_code == 200:
                 data = r.json()
-                mc = data.get("MarketCapitalization", None)
-                return f"${int(mc):,}" if mc else "N/A"
+                mc = data.get("MarketCapitalization")
+                if mc and mc.isdigit():
+                    return f"${int(mc):,}"
+                else:
+                    return "N/A"
             else:
                 return "N/A"
 
         else:
             return "N/A"
 
-    except Exception as e:
+    except Exception:
         return "N/A"
 
 def test_api_connections():
