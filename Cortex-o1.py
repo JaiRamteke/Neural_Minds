@@ -93,37 +93,73 @@ st.markdown("""
 # Stock dictionaries 
 # ---------------------
 RELIABLE_TICKERS = {
-    "US Markets": {
-        "AAPL": "Apple Inc.",
-        "GOOGL": "Alphabet Inc.",
-        "MSFT": "Microsoft Corporation",
-        "BLK": "BlackRock Inc.",
-        "GS": "Goldman Sachs Group Inc.",
-        "STT": "State Street Corporation",
-        "TSLA": "Tesla Inc.",
-        "AMZN": "Amazon.com Inc.",
-        "NVDA": "NVIDIA Corporation",
-        "META": "Meta Platforms Inc.",
-        "NFLX": "Netflix Inc.",
-        "JPM": "JPMorgan Chase & Co.",
-        "V": "Visa Inc."
-    },
-    "Indian Markets": {
-        "RELIANCE.NSE": "Reliance Industries",
-        "TCS.NSE": "Tata Consultancy Services",
-        "PARAS.NSE": "Paras Defence and Space Technologies",
-        "INFY.NSE": "Infosys Limited",
-        "HDFCBANK.NSE": "HDFC Bank",
-        "WIPRO.NSE": "Wipro Limited",
-        "ITC.NSE": "ITC Limited",
-        "SBIN.NSE": "State Bank of India",
-        "TATAMOTORS.NSE": "Tata Motors",
-        "TATASTEEL.NSE": "Tata Steel",
-        "KOTAKBANK.NSE": "Kotak Mahindra Bank",
-        "BHARTIARTL.NSE": "Bharti Airtel",
-        "HINDUNILVR.NSE": "Hindustan Unilever"
-    }
-    
+    # ---------------- US Stocks ----------------
+    "AAPL": "AAPL",       # Apple
+    "MSFT": "MSFT",       # Microsoft
+    "GOOGL": "GOOGL",     # Alphabet
+    "AMZN": "AMZN",       # Amazon
+    "META": "META",       # Meta
+    "TSLA": "TSLA",       # Tesla
+    "BRK.B": "BRK-B",     # Berkshire Hathaway (yfinance needs BRK-B instead of BRK.B)
+    "NVDA": "NVDA",       # NVIDIA
+    "JPM": "JPM",         # JPMorgan
+    "V": "V",             # Visa
+    "NFLX": "NFLX",       # Netflix
+    "DIS": "DIS",         # Disney
+    "XOM": "XOM",         # ExxonMobil
+    "CVX": "CVX",         # Chevron
+    "JNJ": "JNJ",         # Johnson & Johnson
+    "PFE": "PFE",         # Pfizer
+    "MRK": "MRK",         # Merck
+    "UNH": "UNH",         # UnitedHealth
+    "LLY": "LLY",         # Eli Lilly
+    "BA": "BA",           # Boeing
+    "LMT": "LMT",         # Lockheed Martin
+    "NOC": "NOC",         # Northrop Grumman
+    "F": "F",             # Ford
+    "GM": "GM",           # General Motors
+    "WMT": "WMT",         # Walmart
+    "PG": "PG",           # Procter & Gamble
+    "BAC": "BAC",         # Bank of America
+    "KO": "KO",           # Coca-Cola
+    "PEP": "PEP",         # PepsiCo
+    "CSCO": "CSCO",       # Cisco
+    "ORCL": "ORCL",       # Oracle
+
+    # ---------------- Indian Stocks ----------------
+    "RELIANCE": "RELIANCE.NS",
+    "ONGC": "ONGC.NS",
+    "TCS": "TCS.NS",
+    "INFY": "INFY.NS",
+    "HDFCBANK": "HDFCBANK.NS",
+    "ICICIBANK": "ICICIBANK.NS",
+    "KOTAKBANK": "KOTAKBANK.NS",
+    "SBIN": "SBIN.NS",
+    "AXISBANK": "AXISBANK.NS",
+    "BAJFINANCE": "BAJFINANCE.NS",
+    "HINDUNILVR": "HINDUNILVR.NS",
+    "ITC": "ITC.NS",
+    "ASIANPAINT": "ASIANPAINT.NS",
+    "NESTLEIND": "NESTLEIND.NS",
+    "MARUTI": "MARUTI.NS",
+    "TATAMOTORS": "TATAMOTORS.NS",
+    "M&M": "M&M.NS",
+    "SUNPHARMA": "SUNPHARMA.NS",
+    "DRREDDY": "DRREDDY.NS",
+    "CIPLA": "CIPLA.NS",
+    "APOLLOHOSP": "APOLLOHOSP.NS",
+    "TATASTEEL": "TATASTEEL.NS",
+    "JSWSTEEL": "JSWSTEEL.NS",
+    "ULTRACEMCO": "ULTRACEMCO.NS",
+    "ADANIGREEN": "ADANIGREEN.NS",
+    "ADANIPORTS": "ADANIPORTS.NS",
+    "ADANIENT": "ADANIENT.NS",
+    "BHARTIARTL": "BHARTIARTL.NS",
+    "WIPRO": "WIPRO.NS",
+    "TECHM": "TECHM.NS",
+    "PARAS": "PARAS.NS",
+    "HAL": "HAL.NS",
+    "BEL": "BEL.NS",
 }
 
 # ---------------------
@@ -649,34 +685,76 @@ def iterative_forecast(df, pipe, days=1, target_type="return"):
 # ---------------------
 def get_stock_info(ticker, data_source="yfinance"):
     base_ticker = ticker.split(".")[0].upper()
-    
+
     stock_dict = {
-        'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
-        'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software', 'currency': 'USD'},
-        'BLK': {'name': 'BlackRock, Inc.', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
-        'GS': {'name': 'Goldman Sachs Group, Inc.', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'currency': 'USD'},
-        'STT': {'name': 'State Street Corporation', 'sector': 'Financial Services', 'industry': 'Asset Management', 'currency': 'USD'},
-        'GOOGL': {'name': 'Alphabet Inc.', 'sector': 'Technology', 'industry': 'Internet Services', 'currency': 'USD'},
-        'AMZN': {'name': 'Amazon.com, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
-        'META': {'name': 'Meta Platforms, Inc.', 'sector': 'Communication Services', 'industry': 'Social Media', 'currency': 'USD'},
-        'TSLA': {'name': 'Tesla, Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
-        'NVDA': {'name': 'NVIDIA Corporation', 'sector': 'Technology', 'industry': 'Semiconductors', 'currency': 'USD'},
-        'JPM': {'name': 'JPMorgan Chase & Co.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
-        'V': {'name': 'Visa Inc.', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
-        'WMT': {'name': 'Walmart Inc.', 'sector': 'Consumer Defensive', 'industry': 'Discount Stores', 'currency': 'USD'},
-        # Indian
-        'RELIANCE': {'name': 'Reliance Industries Limited', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
-        'TCS': {'name': 'Tata Consultancy Services', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
-        'PARAS': {'name': 'Paras Defence and Space Technologies Ltd.', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
-        'INFY': {'name': 'Infosys Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
-        'HDFCBANK': {'name': 'HDFC Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-        'ICICIBANK': {'name': 'ICICI Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-        'HINDUNILVR': {'name': 'Hindustan Unilever Limited', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'INR'},
-        'BHARTIARTL': {'name': 'Bharti Airtel Limited', 'sector': 'Communication Services', 'industry': 'Telecom Services', 'currency': 'INR'},
-        'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-        'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
-        'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
-    }
+    # ---------------- US Stocks ----------------
+    'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', 'industry': 'Consumer Electronics', 'currency': 'USD'},
+    'MSFT': {'name': 'Microsoft Corporation', 'sector': 'Technology', 'industry': 'Software—Infrastructure', 'currency': 'USD'},
+    'GOOGL': {'name': 'Alphabet Inc. (Class A)', 'sector': 'Communication Services', 'industry': 'Internet Content & Information', 'currency': 'USD'},
+    'AMZN': {'name': 'Amazon.com Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Internet Retail', 'currency': 'USD'},
+    'META': {'name': 'Meta Platforms Inc.', 'sector': 'Communication Services', 'industry': 'Social Media', 'currency': 'USD'},
+    'TSLA': {'name': 'Tesla Inc.', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
+    'BRK.B': {'name': 'Berkshire Hathaway Inc.', 'sector': 'Financial Services', 'industry': 'Insurance—Diversified', 'currency': 'USD'},
+    'NVDA': {'name': 'NVIDIA Corporation', 'sector': 'Technology', 'industry': 'Semiconductors', 'currency': 'USD'},
+    'JPM': {'name': 'JPMorgan Chase & Co.', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
+    'V': {'name': 'Visa Inc.', 'sector': 'Financial Services', 'industry': 'Credit Services', 'currency': 'USD'},
+    'NFLX': {'name': 'Netflix Inc.', 'sector': 'Communication Services', 'industry': 'Entertainment', 'currency': 'USD'},
+    'DIS': {'name': 'The Walt Disney Company', 'sector': 'Communication Services', 'industry': 'Entertainment', 'currency': 'USD'},
+    'XOM': {'name': 'Exxon Mobil Corporation', 'sector': 'Energy', 'industry': 'Oil & Gas Integrated', 'currency': 'USD'},
+    'CVX': {'name': 'Chevron Corporation', 'sector': 'Energy', 'industry': 'Oil & Gas Integrated', 'currency': 'USD'},
+    'JNJ': {'name': 'Johnson & Johnson', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—General', 'currency': 'USD'},
+    'PFE': {'name': 'Pfizer Inc.', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—General', 'currency': 'USD'},
+    'MRK': {'name': 'Merck & Co., Inc.', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—General', 'currency': 'USD'},
+    'UNH': {'name': 'UnitedHealth Group Incorporated', 'sector': 'Healthcare', 'industry': 'Healthcare Plans', 'currency': 'USD'},
+    'LLY': {'name': 'Eli Lilly and Company', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—General', 'currency': 'USD'},
+    'BA': {'name': 'The Boeing Company', 'sector': 'Industrials', 'industry': 'Aerospace & Defense', 'currency': 'USD'},
+    'LMT': {'name': 'Lockheed Martin Corporation', 'sector': 'Industrials', 'industry': 'Aerospace & Defense', 'currency': 'USD'},
+    'NOC': {'name': 'Northrop Grumman Corporation', 'sector': 'Industrials', 'industry': 'Aerospace & Defense', 'currency': 'USD'},
+    'F': {'name': 'Ford Motor Company', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
+    'GM': {'name': 'General Motors Company', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'USD'},
+    'WMT': {'name': 'Walmart Inc.', 'sector': 'Consumer Defensive', 'industry': 'Discount Stores', 'currency': 'USD'},
+    'PG': {'name': 'Procter & Gamble Company', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'USD'},
+    'BAC': {'name': 'Bank of America Corporation', 'sector': 'Financial Services', 'industry': 'Banks—Diversified', 'currency': 'USD'},
+    'KO': {'name': 'Coca-Cola Company', 'sector': 'Consumer Defensive', 'industry': 'Beverages—Non-Alcoholic', 'currency': 'USD'},
+    'PEP': {'name': 'PepsiCo Inc.', 'sector': 'Consumer Defensive', 'industry': 'Beverages—Non-Alcoholic', 'currency': 'USD'},
+    'CSCO': {'name': 'Cisco Systems Inc.', 'sector': 'Technology', 'industry': 'Communication Equipment', 'currency': 'USD'},
+    'ORCL': {'name': 'Oracle Corporation', 'sector': 'Technology', 'industry': 'Software—Infrastructure', 'currency': 'USD'},
+
+    # ---------------- Indian Stocks ----------------
+    'RELIANCE': {'name': 'Reliance Industries Limited', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
+    'ONGC': {'name': 'Oil & Natural Gas Corporation', 'sector': 'Energy', 'industry': 'Oil & Gas', 'currency': 'INR'},
+    'TCS': {'name': 'Tata Consultancy Services', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'INFY': {'name': 'Infosys Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'HDFCBANK': {'name': 'HDFC Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'ICICIBANK': {'name': 'ICICI Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'KOTAKBANK': {'name': 'Kotak Mahindra Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'SBIN': {'name': 'State Bank of India', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'AXISBANK': {'name': 'Axis Bank Limited', 'sector': 'Financial Services', 'industry': 'Banking', 'currency': 'INR'},
+    'BAJFINANCE': {'name': 'Bajaj Finance Limited', 'sector': 'Financial Services', 'industry': 'NBFC', 'currency': 'INR'},
+    'HINDUNILVR': {'name': 'Hindustan Unilever Limited', 'sector': 'Consumer Defensive', 'industry': 'Household & Personal Products', 'currency': 'INR'},
+    'ITC': {'name': 'ITC Limited', 'sector': 'Consumer Defensive', 'industry': 'Tobacco & FMCG', 'currency': 'INR'},
+    'ASIANPAINT': {'name': 'Asian Paints Limited', 'sector': 'Consumer Cyclical', 'industry': 'Specialty Chemicals', 'currency': 'INR'},
+    'NESTLEIND': {'name': 'Nestle India Limited', 'sector': 'Consumer Defensive', 'industry': 'Packaged Foods', 'currency': 'INR'},
+    'MARUTI': {'name': 'Maruti Suzuki India Limited', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'INR'},
+    'TATAMOTORS': {'name': 'Tata Motors Limited', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'INR'},
+    'M&M': {'name': 'Mahindra & Mahindra Limited', 'sector': 'Consumer Cyclical', 'industry': 'Auto Manufacturers', 'currency': 'INR'},
+    'SUNPHARMA': {'name': 'Sun Pharmaceutical Industries Limited', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—Specialty & Generic', 'currency': 'INR'},
+    'DRREDDY': {'name': 'Dr. Reddy\'s Laboratories Limited', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—Specialty & Generic', 'currency': 'INR'},
+    'CIPLA': {'name': 'Cipla Limited', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers—Specialty & Generic', 'currency': 'INR'},
+    'APOLLOHOSP': {'name': 'Apollo Hospitals Enterprise Limited', 'sector': 'Healthcare', 'industry': 'Hospitals & Healthcare Facilities', 'currency': 'INR'},
+    'TATASTEEL': {'name': 'Tata Steel Limited', 'sector': 'Basic Materials', 'industry': 'Steel', 'currency': 'INR'},
+    'JSWSTEEL': {'name': 'JSW Steel Limited', 'sector': 'Basic Materials', 'industry': 'Steel', 'currency': 'INR'},
+    'ULTRACEMCO': {'name': 'UltraTech Cement Limited', 'sector': 'Basic Materials', 'industry': 'Cement', 'currency': 'INR'},
+    'ADANIGREEN': {'name': 'Adani Green Energy Limited', 'sector': 'Utilities', 'industry': 'Renewable Energy', 'currency': 'INR'},
+    'ADANIPORTS': {'name': 'Adani Ports and SEZ Limited', 'sector': 'Industrials', 'industry': 'Logistics & Ports', 'currency': 'INR'},
+    'ADANIENT': {'name': 'Adani Enterprises Limited', 'sector': 'Conglomerate', 'industry': 'Diversified Holdings', 'currency': 'INR'},
+    'BHARTIARTL': {'name': 'Bharti Airtel Limited', 'sector': 'Communication Services', 'industry': 'Telecom Services', 'currency': 'INR'},
+    'WIPRO': {'name': 'Wipro Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'TECHM': {'name': 'Tech Mahindra Limited', 'sector': 'Technology', 'industry': 'IT Services', 'currency': 'INR'},
+    'PARAS': {'name': 'Paras Defence and Space Technologies Ltd.', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
+    'HAL': {'name': 'Hindustan Aeronautics Limited', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'},
+    'BEL': {'name': 'Bharat Electronics Limited', 'sector': 'Industrials', 'industry': 'Defense & Aerospace', 'currency': 'INR'}
+}
 
     base_ticker = ticker.split('.')[0].upper()
     info = stock_dict.get(base_ticker, {
