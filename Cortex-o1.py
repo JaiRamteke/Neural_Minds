@@ -621,7 +621,12 @@ def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10, targe
     space = get_model_space()
     if model_name not in space:
         raise ValueError(f"Model {model_name} not found in model space.")
-    base_model, param_grid = space[model_name]
+
+    model_obj = space[model_name]
+    if isinstance(model_obj, tuple):
+        base_model, param_grid = model_obj
+    else:
+        base_model, param_grid = model_obj, None
 
     pipe = Pipeline([
         ("imputer", SimpleImputer()),
