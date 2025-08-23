@@ -788,33 +788,6 @@ def backtest_holdout(pipe, X, y, test_size=0.2):
 
 model = True
 
-def format_metric(value, metric_type):
-    """
-    Return an HTML formatted metric with background color based on value.
-    metric_type: 'rmse', 'mae', or 'r2'
-    """
-    color = "#ffffff"  # default white
-
-    if metric_type in ["rmse", "mae"]:
-        if value < 0.05:        # excellent
-            color = "#4CAF50"   # green
-        elif value < 0.1:       # moderate
-            color = "#FF9800"   # orange
-        else:                   # poor
-            color = "#F44336"   # red
-
-    elif metric_type == "r2":
-        if value > 0.8:          # excellent
-            color = "#4CAF50"
-        elif value > 0.6:        # good
-            color = "#2196F3"   # blue
-        elif value > 0.4:        # moderate
-            color = "#FF9800"   # orange
-        else:                    # poor
-            color = "#F44336"   # red
-
-    return f"<div style='padding:5px; background-color:{color}; color:white; border-radius:5px; text-align:center;'>{value:.4f}</div>"
-
 metrics = {
     "train_rmse": 0.032,
     "train_mae": 0.025,
@@ -1463,16 +1436,16 @@ def main():
                 
                 with col1:
                     st.markdown("**🎯 Training Metrics:**")
-                    st.markdown(f"📉 RMSE: {format_metric(metrics.get('train_rmse', 0), 'rmse')}", unsafe_allow_html=True)
-                    st.markdown(f"🧮 MAE: {format_metric(metrics.get('train_mae', 0), 'mae')}", unsafe_allow_html=True)
-                    st.markdown(f"📈 R² Score: {format_metric(metrics.get('train_r2', 0), 'r2')}", unsafe_allow_html=True)
+                    st.write(f"📉 RMSE: {metrics.get('train_rmse', 0):.4f}")
+                    st.write(f"🧮 MAE: {metrics.get('train_mae', 0):.4f}")
+                    st.write(f"📈 R² Score: {metrics.get('train_r2', 0):.4f}")
                     st.write(f"🗂️ Sample Size: {metrics.get('train_size', 0)}")
-                
+
                 with col2:
                     st.markdown("**📊 Testing Metrics:**")
-                    st.markdown(f"📉 RMSE: {format_metric(metrics.get('test_rmse', 0), 'rmse')}", unsafe_allow_html=True)
-                    st.markdown(f"🧮 MAE: {format_metric(metrics.get('test_mae', 0), 'mae')}", unsafe_allow_html=True)
-                    st.markdown(f"📈 R² Score: {format_metric(metrics.get('test_r2', 0), 'r2')}", unsafe_allow_html=True)
+                    st.write(f"📉 RMSE: {metrics.get('test_rmse', 0):.4f}")
+                    st.write(f"🧮 MAE: {metrics.get('test_mae', 0):.4f}")
+                    st.write(f"📈 R² Score: {metrics.get('test_r2', 0):.4f}")
                     st.write(f"🗂️ Sample Size: {metrics.get('test_size', 0)}")
                 
                 # Model interpretation
