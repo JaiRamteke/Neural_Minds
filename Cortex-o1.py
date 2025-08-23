@@ -1458,18 +1458,6 @@ def main():
         with tab4:
             if model is not None:
                 test_r2 = metrics.get('test_r2', 0)
-
-                # Performance badge
-                if test_r2 > 0.8:
-                    st.markdown("<div style='padding:10px; background-color:#4CAF50; color:white; border-radius:5px; text-align:center; font-weight:bold;'>🎯 Excellent Performance</div>", unsafe_allow_html=True)
-                elif test_r2 > 0.6:
-                    st.markdown("<div style='padding:10px; background-color:#2196F3; color:white; border-radius:5px; text-align:center; font-weight:bold;'>👍 Good Performance</div>", unsafe_allow_html=True)
-                elif test_r2 > 0.4:
-                    st.markdown("<div style='padding:10px; background-color:#FF9800; color:white; border-radius:5px; text-align:center; font-weight:bold;'>⚠️ Moderate Performance</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='padding:10px; background-color:#F44336; color:white; border-radius:5px; text-align:center; font-weight:bold;'>❌ Poor Performance</div>", unsafe_allow_html=True)
-
-                st.markdown("### 🤖 Model Performance Details")
                 
                 col1, col2 = st.columns(2)
                 
@@ -1521,12 +1509,14 @@ def main():
                             st.write(f"- **{f}**: {imp:.3f}")
                 
                 # Suggested next steps
-                with st.expander("💡 Suggested Next Steps"):
+                with st.expander("📌 Why performance varies & fixes applied", expanded=True):
                     st.write("""
-                    - Extend historical data window or use more granular features.
-                    - Evaluate alternative algorithms (e.g., Random Forest, XGBoost, Prophet).
-                    - Consider ensemble models for more robust predictions.
-                    - Check for data quality issues or outliers in key features.
+                    - **Proper target alignment**: Predict the **next-day** return or price to avoid leakage.
+                    - **Return-based modeling**: Default target is **Return (%)**, allowing comparability across stocks.
+                    - **Walk-forward CV**: Uses time-aware folds for fair evaluation across regimes.
+                    - **Auto Model Selection**: Tests multiple algorithms & selects the best, with optional fast tuning.
+                    - **Iterative multi-day forecasting**: Step-by-step predictions, recomputing features at each step.
+                    - **Diagnostics**: Predictability score flags tickers with inherently poor short-term signal.
                     """)
                 
                 # Optional: Prediction confidence
