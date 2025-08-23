@@ -1436,17 +1436,17 @@ def main():
                 
                 with col1:
                     st.markdown("**🎯 Training Metrics:**")
-                    st.write(f"📉 RMSE: {metrics.get('train_rmse', 0):.4f}")
-                    st.write(f"🧮 MAE: {metrics.get('train_mae', 0):.4f}")
-                    st.write(f"📈 R² Score: {metrics.get('train_r2', 0):.4f}")
-                    st.write(f"🗂️ Sample Size: {metrics.get('train_size', 0)}")
+                    st.write(f" RMSE: {metrics.get('train_rmse', 0):.4f}")
+                    st.write(f" MAE: {metrics.get('train_mae', 0):.4f}")
+                    st.write(f" R² Score: {metrics.get('train_r2', 0):.4f}")
+                    st.write(f" Sample Size: {metrics.get('train_size', 0)}")
 
                 with col2:
                     st.markdown("**📊 Testing Metrics:**")
-                    st.write(f"📉 RMSE: {metrics.get('test_rmse', 0):.4f}")
-                    st.write(f"🧮 MAE: {metrics.get('test_mae', 0):.4f}")
-                    st.write(f"📈 R² Score: {metrics.get('test_r2', 0):.4f}")
-                    st.write(f"🗂️ Sample Size: {metrics.get('test_size', 0)}")
+                    st.write(f" RMSE: {metrics.get('test_rmse', 0):.4f}")
+                    st.write(f" MAE: {metrics.get('test_mae', 0):.4f}")
+                    st.write(f" R² Score: {metrics.get('test_r2', 0):.4f}")
+                    st.write(f" Sample Size: {metrics.get('test_size', 0)}")
                 
                 # Model interpretation
                 st.markdown("### 🎯 Model Interpretation")
@@ -1471,26 +1471,25 @@ def main():
                     - **Diagnostics**: Predictability score flags tickers with inherently poor short-term signal.
                     """)
                 
-                # Top features
                 if hasattr(model, "feature_importances_") and metrics.get("feature_names"):
                     st.markdown("### 🔑 Top Features Contributing to Predictions")
+                    
                     importances = model.feature_importances_
                     feature_names = metrics.get("feature_names", [])
+
+                    # Make sure lengths match
                     if len(feature_names) == len(importances):
+                        # Sort by importance descending and take top 5
                         top_features = sorted(zip(feature_names, importances), key=lambda x: x[1], reverse=True)[:5]
+                        
+                        # Display each feature with its importance
                         for f, imp in top_features:
                             st.write(f"- **{f}**: {imp:.3f}")
+                    else:
+                        st.warning("⚠️ Feature names and importances do not match in length.")
+                else:
+                    st.info("ℹ️ Top features are not available for this model.")
                 
-                # Suggested next steps
-                with st.expander("📌 Why performance varies & fixes applied", expanded=True):
-                    st.write("""
-                    - **Proper target alignment**: Predict the **next-day** return or price to avoid leakage.
-                    - **Return-based modeling**: Default target is **Return (%)**, allowing comparability across stocks.
-                    - **Walk-forward CV**: Uses time-aware folds for fair evaluation across regimes.
-                    - **Auto Model Selection**: Tests multiple algorithms & selects the best, with optional fast tuning.
-                    - **Iterative multi-day forecasting**: Step-by-step predictions, recomputing features at each step.
-                    - **Diagnostics**: Predictability score flags tickers with inherently poor short-term signal.
-                    """)
                 
                 # Optional: Prediction confidence
                 if "confidence" in metrics:
