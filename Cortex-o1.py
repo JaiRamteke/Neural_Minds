@@ -562,15 +562,83 @@ def prepare_supervised(df, horizon=1, target_type="return"):
 # Model training, CV, selection
 # ---------------------
 def get_model_space():
-    models = {
-        "Random Forest": RandomForestRegressor(n_estimators=400, max_depth=None, min_samples_leaf=2, random_state=42, n_jobs=-1),
-        "Gradient Boosting": GradientBoostingRegressor(random_state=42),
-        "Ridge": Ridge(alpha=1.0, random_state=42),
-        "Lasso": Lasso(alpha=0.001, random_state=42)
+    models = {}
+    param_grids = {}
+
+    # 🌲 Random Forest
+    models["Random Forest"] = RandomForestRegressor(
+        n_estimators=100,
+        max_depth=6,
+        min_samples_leaf=5,
+        random_state=42,
+        n_jobs=1
+    )
+    param_grids["Random Forest"] = {
+        "n_estimators": [100, 200, 300],
+        "max_depth": [3, 5, 6],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [1, 5, 10],
+        "max_features": ["sqrt", 0.8],
+        "bootstrap": [True, False]
     }
-    if XGB_AVAILABLE:
-        models["XGBoost"] = XGBRegressor(n_estimators=600, learning_rate=0.05, max_depth=4, subsample=0.9, colsample_bytree=0.9, random_state=42, n_jobs=-1)
-    return models
+
+    # 🌱 Gradient Boosting
+    models["Gradient Boosting"] = GradientBoostingRegressor(
+        n_estimators=200,
+        learning_rate=0.05,
+        max_depth=3,
+        min_samples_leaf=10,
+        subsample=0.8,
+        random_state=42
+    )
+    param_grids["Gradient Boosting"] = {
+        "n_estimators": [100, 200, 300],
+        "learning_rate": [0.01, 0.05, 0.1],
+        "max_depth": [2, 3, 4],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [5, 10, 20],
+        "subsample": [0.7, 0.8, 0.9]
+    }
+
+    # 🔗 Linear models
+    models["Ridge"] = Ridge(alpha=1.0, random_state=42)
+    param_grids["Ridge"] = {"alpha": [0.1, 1.0, 10.0]}
+
+    models["Lasso"] = Lasso(alpha=0.001, random_state=42)
+    param_grids["Lasso"] = {"alpha": [0.0001, 0.001, 0.01]}
+
+    # 🔥 XGBoost (always visible, raises friendly error if not installed)
+    try:
+        if not XGB_AVAILABLE:
+            raise ImportError("XGBoost is not installed. Install it with `pip install xgboost` to use this model.")
+        models["XGBoost"] = XGBRegressor(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=3,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_lambda=1.0,
+            reg_alpha=0.1,
+            min_child_weight=5,
+            random_state=42,
+            n_jobs=1
+        )
+        param_grids["XGBoost"] = {
+            "n_estimators": [200, 300, 400],
+            "learning_rate": [0.01, 0.05, 0.1],
+            "max_depth": [2, 3, 4],
+            "subsample": [0.7, 0.8, 0.9],
+            "colsample_bytree": [0.7, 0.8, 0.9],
+            "reg_lambda": [0.5, 1.0, 2.0],
+            "reg_alpha": [0.0, 0.1, 0.5],
+            "min_child_weight": [1, 3, 5]
+        }
+    except ImportError as e:
+        models["XGBoost"] = None
+        param_grids["XGBoost"] = None
+        print(f"⚠️ {e}")
+
+    return models, param_grids
 
 def time_series_cv_score(model, X, y, n_splits=5):
     tscv = TimeSeriesSplit(n_splits=n_splits)
