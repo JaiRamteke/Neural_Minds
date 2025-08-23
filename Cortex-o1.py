@@ -561,7 +561,7 @@ def prepare_supervised(df, horizon=1, target_type="return"):
 # ---------------------
 # Model training, CV, selection
 # ---------------------
-def get_model_space():
+def get_model_space(return_param_grids=False):
     models = {}
     param_grids = {}
 
@@ -607,7 +607,7 @@ def get_model_space():
     models["Lasso"] = Lasso(alpha=0.001, random_state=42)
     param_grids["Lasso"] = {"alpha": [0.0001, 0.001, 0.01]}
 
-    # 🔥 XGBoost (always visible, raises friendly error if not installed)
+    # 🔥 XGBoost (always visible, friendly error if not installed)
     try:
         if not XGB_AVAILABLE:
             raise ImportError("XGBoost is not installed. Install it with `pip install xgboost` to use this model.")
@@ -638,7 +638,9 @@ def get_model_space():
         param_grids["XGBoost"] = None
         print(f"⚠️ {e}")
 
-    return models, param_grids
+    if return_param_grids:
+        return models, param_grids
+    return models
 
 def time_series_cv_score(model, X, y, n_splits=5):
     tscv = TimeSeriesSplit(n_splits=n_splits)
@@ -653,6 +655,37 @@ def time_series_cv_score(model, X, y, n_splits=5):
         mae_list.append(mean_absolute_error(yte, pred))
         r2_list.append(r2_score(yte, pred))
     return {"rmse_mean": float(np.mean(rmse_list)), "mae_mean": float(np.mean(mae_list)), "r2_mean": float(np.mean(r2_list))}
+
+def select_model(model_name, return_param_grid=False):
+    """
+    Safely select a model by name from get_model_space().
+    
+    Args:
+        model_name (str): Name of the model to select.
+        return_param_grid (bool): If True, also return the model's param grid.
+    
+    Returns:
+        model instance (and optionally param_grid)
+    
+    Raises:
+        ValueError if the model name is invalid or XGBoost is not installed.
+    """
+    models, param_grids = get_model_space(return_param_grids=True)
+    
+    if model_name not in models:
+        raise ValueError(f"Model '{model_name}' not found. Available models: {list(models.keys())}")
+    
+    model = models[model_name]
+    param_grid = param_grids.get(model_name, None)
+    
+    if model_name == "XGBoost" and model is None:
+        raise ValueError(
+            "XGBoost is not installed. Install it with `pip install xgboost` to use this model."
+        )
+    
+    if return_param_grid:
+        return model, param_grid
+    return model
 
 def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10, target_type="return"):
     """
@@ -1053,7 +1086,7 @@ def main():
 
         # Model selection
         st.markdown("### 🤖 Select Model for Forecasting")
-        available = list(get_model_space().keys())
+        available = list(get_model_space(return_param_grids=True)[0].keys())
         model_choice = st.selectbox(
             "Model",
             available,
