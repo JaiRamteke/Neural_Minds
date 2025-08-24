@@ -1259,6 +1259,31 @@ def main():
 
             # Backtest plot (last 20% hold-out)
             bt_metrics, bt_df = backtest_holdout(final_pipe, X, y, test_size=0.2)
+            # ✅ Build a single, consistent metrics dictionary from CV + holdout
+            n_total = len(X)
+            n_test  = int(n_total * 0.2)
+            n_train = n_total - n_test
+
+            train_rmse = None
+            train_mae  = None
+            train_r2   = None
+            if isinstance(cv_table, pd.DataFrame) and not cv_table.empty:
+                # cv_table has columns: ["model", "rmse_mean", "mae_mean", "r2_mean"]
+                train_rmse = float(cv_table.get("rmse_mean", pd.Series([float("nan")])).iloc[0])
+                train_mae  = float(cv_table.get("mae_mean",  pd.Series([float("nan")])).iloc[0])
+                train_r2   = float(cv_table.get("r2_mean",   pd.Series([float("nan")])).iloc[0])
+
+            metrics = {
+                "train_rmse": train_rmse,
+                "train_mae":  train_mae,
+                "train_r2":   train_r2,
+                "test_rmse":  float(bt_metrics["rmse"]),
+                "test_mae":   float(bt_metrics["mae"]),
+                "test_r2":    float(bt_metrics["r2"]),
+                "train_size": int(n_train),
+                "test_size":  int(n_test),
+                "feature_names": list(X.columns),
+            }
             st.markdown("#### 📉 Backtest on Recent Hold‑out")
             c1,c2,c3 = st.columns(3)
             c1.metric("Average Error (bigger mistakes)", f"{bt_metrics['rmse']:.4f}")
@@ -1370,11 +1395,11 @@ def main():
 
         # ---------------- Tab4: Model Performance ----------------
         with tab4:
-            if model is not None:
-                test_r2 = metrics.get('test_r2', 0)
-                
+            if "final_pipe" in locals():
+                test_r2 = metrics.get('test_r2', 0.0)
+
                 col1, col2 = st.columns(2)
-                
+
                 with col1:
                     st.markdown("**🎯 Training Metrics:**")
                     st.write(f" RMSE: {metrics.get('train_rmse', 0):.4f}")
@@ -1388,7 +1413,7 @@ def main():
                     st.write(f" MAE: {metrics.get('test_mae', 0):.4f}")
                     st.write(f" R² Score: {metrics.get('test_r2', 0):.4f}")
                     st.write(f" Sample Size: {metrics.get('test_size', 0)}")
-                
+
                 # Model interpretation
                 st.markdown("### 🎯 Model Interpretation")
                 if test_r2 > 0.8:
@@ -1400,7 +1425,7 @@ def main():
                 else:
                     st.error("❌ Poor model performance. Predictions may be unreliable.")
                     st.warning("⚠️ Note: Consider increasing history length, adding features, or testing different algorithms.")
-                
+
                 # Expandable explanation
                 with st.expander("📌 Why performance varies & fixes applied", expanded=True):
                     st.write("""
@@ -1411,30 +1436,34 @@ def main():
                     - **Iterative multi-day forecasting**: Step-by-step predictions, recomputing features at each step.
                     - **Diagnostics**: Predictability score flags tickers with inherently poor short-term signal.
                     """)
-                
-                if hasattr(model, "feature_importances_") and metrics.get("feature_names"):
+
+                # Feature importances from inner estimator if available
+                inner_model = final_pipe.named_steps.get("model", None)
+                if inner_model is not None and hasattr(inner_model, "feature_importances_") and metrics.get("feature_names"):
                     st.markdown("### 🔑 Top Features Contributing to Predictions")
-                    
-                    importances = model.feature_importances_
+
+                    importances = inner_model.feature_importances_
                     feature_names = metrics.get("feature_names", [])
 
-                    # Make sure lengths match
                     if len(feature_names) == len(importances):
-                        # Sort by importance descending and take top 5
-                        top_features = sorted(zip(feature_names, importances), key=lambda x: x[1], reverse=True)[:5]
-                        
-                        # Display each feature with its importance
+                        top_features = sorted(
+                            zip(feature_names, importances),
+                            key=lambda x: x[1],
+                            reverse=True
+                        )[:5]
+
                         for f, imp in top_features:
                             st.write(f"- **{f}**: {imp:.3f}")
                     else:
                         st.warning("⚠️ Feature names and importances do not match in length.")
                 else:
                     st.info("ℹ️ Top features are not available for this model.")
-                
-                
+
                 # Optional: Prediction confidence
                 if "confidence" in metrics:
                     st.markdown(f"### 📈 Prediction Confidence: {metrics['confidence']*100:.1f}%")
+            else:
+                st.info("Train a model in the **Predictions** tab to see performance.")
 
         # ---------------- Tab5: Data Table ----------------
         with tab5:
