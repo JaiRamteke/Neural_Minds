@@ -10,3 +10,4 @@ seaborn
 statsmodels
 tensorflow
 shap
+xgboost
