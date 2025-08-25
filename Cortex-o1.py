@@ -989,22 +989,15 @@ def render_explainable_ai_tab(final_pipe, df):
 
             st.write("**Why the latest prediction looks this way:**")
 
-            # User choice for plot style
-            plot_type = st.radio("Choose SHAP plot type:", ["Waterfall", "Bar"], horizontal=True)
-            if plot_type == "Waterfall":
-                shap.plots.waterfall(shap_values[0], show=False)
-                fig_local = plt.gcf()
-                st.pyplot(fig_local, clear_figure=True)
-            else:
-                shap.plots.bar(shap_values, show=False)
-                fig_bar = plt.gcf()
-                st.pyplot(fig_bar, clear_figure=True)
+            # Always show waterfall plot
+            shap.plots.waterfall(shap_values[0], show=False)
+            fig_local = plt.gcf()
+            st.pyplot(fig_local, clear_figure=True)
 
             # --------- Plain English Narrative ---------
             feature_names = getattr(estimator, "feature_names_in_", X_all.columns)
             shap_contribs = dict(zip(feature_names, shap_values.values[0]))
-            top_n = st.slider("Show top N features", 3, 10, 5)
-            top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:top_n]
+            top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
 
             # Currency symbol handling
             currency_symbol = st.session_state.get("currency_symbol", "$")
