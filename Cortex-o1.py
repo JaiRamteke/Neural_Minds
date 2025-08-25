@@ -916,7 +916,6 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
 
 # Explainable AI tab (compatible with Pipeline)
 def render_explainable_ai_tab(final_pipe, df):
-
     st.markdown("## 🔍 Explainable AI")
 
     try:
@@ -925,7 +924,7 @@ def render_explainable_ai_tab(final_pipe, df):
         X, y, features = prepare_supervised(df, horizon=horizon, target_type=st.session_state["target_type"])
 
         if final_pipe is None or X is None or X.empty:
-            st.warning("Run predictions in Tab2 first to enable explainability.")
+            st.warning("⚠️ Run predictions in Tab2 first to enable explainability.")
             return
 
         # ---------------- 🌍 Global Explanation ----------------
@@ -946,8 +945,10 @@ def render_explainable_ai_tab(final_pipe, df):
             )
             st.plotly_chart(fig_fi, use_container_width=True)
 
-            st.info("Global importance shows which indicators (like RSI, moving averages, or volatility) "
-                    "the model relies on most across the entire dataset.")
+            st.info(
+                "Global importance shows which indicators (like RSI, moving averages, or volatility) "
+                "the model relies on most across the entire dataset."
+            )
         except Exception as e:
             st.error(f"Global feature importance failed: {e}")
 
@@ -956,25 +957,38 @@ def render_explainable_ai_tab(final_pipe, df):
         try:
             # Get latest row
             X_all, _, _ = prepare_supervised(df, horizon=1, target_type=st.session_state["target_type"])
+            if len(X_all) < 2:
+                st.warning("Not enough data for SHAP local explanation.")
+                return
+
             last_row = X_all.iloc[[-1]]
 
-            # Use SHAP to explain local prediction
-            explainer = shap.Explainer(final_pipe.named_steps["m"], X_all)
+            # Sample subset for SHAP (faster)
+            X_sample = X_all.sample(min(200, len(X_all)), random_state=42)
+
+            # Use SHAP with the full pipeline
+            explainer = shap.Explainer(final_pipe, X_sample)
             shap_values = explainer(last_row)
 
             st.write("**Why the latest prediction looks this way:**")
 
-            shap.plots.waterfall(shap_values[0], show=False)
-            fig_local = plt.gcf()   # ✅ get the figure object
-            st.pyplot(fig_local, clear_figure=True)
+            # User choice for plot style
+            plot_type = st.radio("Choose SHAP plot type:", ["Waterfall", "Bar"], horizontal=True)
+            if plot_type == "Waterfall":
+                fig_local = shap.plots.waterfall(shap_values[0], show=False)
+                st.pyplot(fig_local)
+            else:
+                fig_bar = shap.plots.bar(shap_values, show=False)
+                st.pyplot(fig_bar)
 
             # --------- Plain English Narrative ---------
             shap_contribs = dict(zip(X_all.columns, shap_values.values[0]))
-            top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
+            top_n = st.slider("Show top N features", 3, 10, 5)
+            top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:top_n]
 
-            # Adjust units based on target_type
+            # Currency symbol handling
+            currency_symbol = st.session_state.get("currency_symbol", "$")
             target_type = st.session_state["target_type"]
-            currency_symbol = get_stock_info.get("currency_symbol", "$") if "stock_info" in globals() else "$"
 
             narrative = []
             for feat, val in top_features:
@@ -993,7 +1007,10 @@ def render_explainable_ai_tab(final_pipe, df):
                 st.write(line)
 
             # Net effect conclusion
-            net_effect = sum(shap_contribs.values())
+            base_val = shap_values.base_values[0]
+            pred_val = shap_values.values[0].sum() + base_val
+            net_effect = pred_val - base_val
+
             if target_type == "return":
                 conclusion_val = f"{net_effect:.2f}%"
             else:
