@@ -1422,7 +1422,10 @@ def main():
 
                 with col1:
                     st.markdown("**🎯 Training Metrics:**")
-                    st.write(f" RMSE: {metrics.get('train_rmse', 0):.4f}")
+                    if metrics and isinstance(metrics, dict):
+                        st.write(f"RMSE: {metrics.get('train_rmse', 0):.4f}")
+                    else:
+                        st.warning("⚠️ Metrics unavailable (model may have failed to train).")
                     st.write(f" MAE: {metrics.get('train_mae', 0):.4f}")
                     st.write(f" R² Score: {metrics.get('train_r2', 0):.4f}")
                     st.write(f" Sample Size: {metrics.get('train_size', 0)}")
