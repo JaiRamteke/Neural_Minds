@@ -1422,13 +1422,13 @@ def main():
 
                 with col1:
                     st.markdown("**🎯 Training Metrics:**")
-                    if metrics and isinstance(metrics, dict):
-                        st.write(f"RMSE: {metrics.get('train_rmse', 0):.4f}")
+                    if isinstance(metrics, dict):
+                        st.write(f"Train RMSE: {metrics.get('train_rmse', 0):.4f}")
+                        st.write(f"Test RMSE: {metrics.get('test_rmse', 0):.4f}")
+                        st.write(f"MAE: {metrics.get('mae', 0):.4f}")
+                        st.write(f"R2: {metrics.get('r2', 0):.4f}")
                     else:
-                        st.warning("⚠️ Metrics unavailable (model may have failed to train).")
-                    st.write(f" MAE: {metrics.get('train_mae', 0):.4f}")
-                    st.write(f" R² Score: {metrics.get('train_r2', 0):.4f}")
-                    st.write(f" Sample Size: {metrics.get('train_size', 0)}")
+                        st.warning("⚠️ Metrics not available (model may not have trained successfully).")
 
                 with col2:
                     st.markdown("**📊 Testing Metrics:**")
