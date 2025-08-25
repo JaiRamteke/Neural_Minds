@@ -223,61 +223,87 @@ def map_ticker_for_source(ticker: str, source: str) -> str:
 
     return ticker.upper()
 
-def get_market_cap(ticker: str, source: str = "yfinance") -> str:
+def get_market_cap(ticker: str, source: str = "yfinance", currency: str = "USD") -> str:
     try:
         mapped_ticker = map_ticker_for_source(ticker, source)
 
+        mc = None
         if source.lower() == "yfinance":
-            ticker_obj = yf.Ticker(mapped_ticker)
-            mc = None
+            t = yf.Ticker(mapped_ticker)
 
-            # 1) Try fast_info
+            # 1) fast_info (most reliable for NSE)
             try:
-                fi = getattr(ticker_obj, "fast_info", None)
-                if fi:
-                    mc = fi.get("market_cap") or fi.get("marketCap")
+                fi = t.fast_info
+                # fast_info can be a dict-like or object depending on yfinance version
+                mc = getattr(fi, "market_cap", None)
+                if mc is None and isinstance(fi, dict):
+                    mc = fi.get("market_cap")
             except Exception:
                 mc = None
 
-            # 2) Fall back to info/get_info
+            # 2) new-style get_info()
             if not mc:
                 try:
-                    info = ticker_obj.get_info() if hasattr(ticker_obj, "get_info") else ticker_obj.info
-                    mc = info.get("marketCap") or info.get("market_cap")
+                    info = t.get_info()
+                    if isinstance(info, dict):
+                        mc = info.get("marketCap")
                 except Exception:
                     mc = None
 
-            # 3) Compute fallback: sharesOutstanding × last_price
+            # 3) Compute fallback = price × shares
             if not mc:
+                price = None
+                shares = None
                 try:
-                    info = info if 'info' in locals() else ticker_obj.get_info()
-                    shares = info.get("sharesOutstanding")
-                    last_price = (getattr(ticker_obj, "fast_info", {}) or {}).get("last_price") or info.get("currentPrice")
-                    if shares and last_price:
-                        mc = float(shares) * float(last_price)
+                    # try fast_info first
+                    price = (getattr(fi, "last_price", None) or
+                             (fi.get("last_price") if isinstance(fi, dict) else None) or
+                             getattr(fi, "regular_market_price", None) or
+                             (fi.get("regular_market_price") if isinstance(fi, dict) else None))
                 except Exception:
-                    mc = None
+                    pass
+                if not price:
+                    try:
+                        hist = t.history(period="1d")
+                        if not hist.empty:
+                            price = float(hist["Close"].iloc[-1])
+                    except Exception:
+                        pass
+                try:
+                    # shares can be in fast_info or info
+                    shares = (getattr(fi, "shares", None) if fi else None)
+                    if shares is None and isinstance(fi, dict):
+                        shares = fi.get("shares")
+                    if not shares:
+                        info2 = t.get_info()
+                        if isinstance(info2, dict):
+                            shares = info2.get("sharesOutstanding")
+                except Exception:
+                    pass
 
-            # Format
-            if mc:
-                return f"₹{mc:,.0f}" if mapped_ticker.endswith(".NS") else f"${mc:,.0f}"
-            else:
-                return "N/A"
+                if price and shares:
+                    mc = float(price) * float(shares)
 
         elif source.lower() in ["alpha_vantage", "alphavantage"]:
             url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={mapped_ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                data = r.json()
-                mc = data.get("MarketCapitalization")
-                if mc and mc.isdigit():
-                    return f"${int(mc):,}"
-                else:
-                    return get_market_cap(ticker, source="yfinance")
-            else:
-                return "N/A"
+            try:
+                r = requests.get(url, timeout=10)
+                if r.status_code == 200:
+                    data = r.json()
+                    av_mc = data.get("MarketCapitalization")
+                    if av_mc and str(av_mc).isdigit():
+                        mc = int(av_mc)
+            except Exception:
+                pass
+            # optional: no recursive fallback here to avoid rate limits / loops
 
-        return "N/A"
+        if not mc:
+            return "N/A"
+
+        # Currency-aware formatting
+        symbols = {"USD": "$", "INR": "₹", "EUR": "€", "GBP": "£", "JPY": "¥"}
+        sym = symbols.get((currency or "USD").upper(), "")
+        return f"{sym}{mc:,.0f}"
 
     except Exception:
         return "N/A"
@@ -928,7 +954,8 @@ def get_stock_info(ticker, data_source="yfinance"):
         'industry': 'Unknown',
         'currency': 'USD'
     })
-    info['market_cap'] = get_market_cap(ticker, source=data_source)
+    info["market_cap"] = get_market_cap(base_ticker, source=data_source, currency=info.get("currency", "USD"))
+
     return info
 
 # Safe display helper
