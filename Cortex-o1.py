@@ -914,7 +914,7 @@ def safe_stat(df, col, func, label, fmt="{:.2f}", currency_symbol=""):
         pass
     st.write(f"- {label}: Data not available")
 
-# Explainable AI tab (compatible with Pipeline)
+# Explainable AI tab (robust + pipeline compatible)
 def render_explainable_ai_tab(final_pipe, df):
     st.markdown("## 🔍 Explainable AI")
 
@@ -950,7 +950,8 @@ def render_explainable_ai_tab(final_pipe, df):
                 "the model relies on most across the entire dataset."
             )
         except Exception as e:
-            st.error(f"Global feature importance failed: {e}")
+            st.warning("⚠️ Global feature importance not available.")
+            st.caption(f"(debug: {e})")
 
         # ---------------- 🎯 Local Explanation ----------------
         st.markdown("### 🎯 Local Explanation (Latest Prediction)")
@@ -966,23 +967,42 @@ def render_explainable_ai_tab(final_pipe, df):
             # Sample subset for SHAP (faster)
             X_sample = X_all.sample(min(200, len(X_all)), random_state=42)
 
-            # Use SHAP with the full pipeline
-            explainer = shap.Explainer(final_pipe, X_sample)
-            shap_values = explainer(last_row)
+            # ---- Transform features before SHAP ----
+            X_transformed = final_pipe[:-1].transform(X_sample)
+            X_last = final_pipe[:-1].transform(last_row)
+
+            # Get the trained estimator (final step of pipeline)
+            estimator = final_pipe.named_steps["m"]
+
+            # Detect model type for SHAP
+            model_name = estimator.__class__.__name__
+            if "XGB" in model_name or "Forest" in model_name or "GBM" in model_name:
+                explainer = shap.TreeExplainer(estimator)
+                shap_values = explainer(X_last)
+            elif "Linear" in model_name or hasattr(estimator, "coef_"):
+                explainer = shap.LinearExplainer(estimator, X_transformed)
+                shap_values = explainer(X_last)
+            else:
+                # Fallback: kernel explainer (slower)
+                explainer = shap.Explainer(estimator, X_transformed)
+                shap_values = explainer(X_last)
 
             st.write("**Why the latest prediction looks this way:**")
 
             # User choice for plot style
             plot_type = st.radio("Choose SHAP plot type:", ["Waterfall", "Bar"], horizontal=True)
             if plot_type == "Waterfall":
-                fig_local = shap.plots.waterfall(shap_values[0], show=False)
-                st.pyplot(fig_local)
+                shap.plots.waterfall(shap_values[0], show=False)
+                fig_local = plt.gcf()
+                st.pyplot(fig_local, clear_figure=True)
             else:
-                fig_bar = shap.plots.bar(shap_values, show=False)
-                st.pyplot(fig_bar)
+                shap.plots.bar(shap_values, show=False)
+                fig_bar = plt.gcf()
+                st.pyplot(fig_bar, clear_figure=True)
 
             # --------- Plain English Narrative ---------
-            shap_contribs = dict(zip(X_all.columns, shap_values.values[0]))
+            feature_names = getattr(estimator, "feature_names_in_", X_all.columns)
+            shap_contribs = dict(zip(feature_names, shap_values.values[0]))
             top_n = st.slider("Show top N features", 3, 10, 5)
             top_features = sorted(shap_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:top_n]
 
@@ -1006,7 +1026,7 @@ def render_explainable_ai_tab(final_pipe, df):
             for line in narrative:
                 st.write(line)
 
-            # Net effect conclusion
+            # Net effect conclusion (relative to baseline prediction)
             base_val = shap_values.base_values[0]
             pred_val = shap_values.values[0].sum() + base_val
             net_effect = pred_val - base_val
@@ -1022,7 +1042,8 @@ def render_explainable_ai_tab(final_pipe, df):
                 st.error(f"Overall: Features combined to push the forecast **DOWN (Bearish Bias)** by {conclusion_val}")
 
         except Exception as e:
-            st.error(f"Local explanation failed: {e}")
+            st.warning("⚠️ Local explanation not available for this model type.")
+            st.caption(f"(debug: {e})")
 
     except Exception as e:
         st.error(f"Explainable AI tab failed: {e}")
