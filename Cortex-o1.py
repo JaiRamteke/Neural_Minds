@@ -1294,16 +1294,16 @@ def main():
                 train_r2   = float(cv_table.get("r2_mean",   pd.Series([float("nan")])).iloc[0])
 
             metrics = {
-                "train_rmse": train_rmse,
-                "train_mae":  train_mae,
-                "train_r2":   train_r2,
-                "test_rmse":  float(bt_metrics["rmse"]),
-                "test_mae":   float(bt_metrics["mae"]),
-                "test_r2":    float(bt_metrics["r2"]),
-                "train_size": int(n_train),
-                "test_size":  int(n_test),
-                "feature_names": list(X.columns),
-            }
+                    "train_rmse": float(train_rmse) if train_rmse is not None else 0.0,
+                    "train_mae":  float(train_mae)  if train_mae  is not None else 0.0,
+                    "train_r2":   float(train_r2)   if train_r2   is not None else 0.0,
+                    "test_rmse":  float(bt_metrics.get("rmse", 0.0)),
+                    "test_mae":   float(bt_metrics.get("mae",  0.0)),
+                    "test_r2":    float(bt_metrics.get("r2",   0.0)),
+                    "train_size": int(n_train),
+                    "test_size":  int(n_test),
+                    "feature_names": list(X.columns),
+                }
             st.markdown("#### 📉 Backtest on Recent Hold‑out")
             c1,c2,c3 = st.columns(3)
             c1.metric("Average Error (bigger mistakes)", f"{bt_metrics['rmse']:.4f}")
