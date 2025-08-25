@@ -229,7 +229,35 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
 
         if source.lower() == "yfinance":
             ticker_obj = yf.Ticker(mapped_ticker)
-            mc = ticker_obj.info.get("marketCap")
+
+            mc = None
+            # 1) fast_info
+            try:
+                fi = getattr(ticker_obj, "fast_info", None)
+                if fi:
+                    mc = fi.get("market_cap") or fi.get("marketCap")
+            except Exception:
+                mc = None
+
+            # 2) get_info() / info
+            if not mc:
+                try:
+                    info = ticker_obj.get_info() if hasattr(ticker_obj, "get_info") else ticker_obj.info
+                    mc = info.get("marketCap") or info.get("market_cap")
+                except Exception:
+                    mc = None
+
+            # 3) last resort: sharesOutstanding * last_price
+            if not mc:
+                try:
+                    info = info if 'info' in locals() else (ticker_obj.get_info() if hasattr(ticker_obj,"get_info") else ticker_obj.info)
+                    shares = info.get("sharesOutstanding")
+                    last_price = (getattr(ticker_obj, "fast_info", {}) or {}).get("last_price") or info.get("currentPrice")
+                    if shares and last_price:
+                        mc = float(shares) * float(last_price)
+                except Exception:
+                    mc = None
+
             return f"${mc:,.0f}" if mc else "N/A"
 
         elif source.lower() in ["alpha_vantage", "alphavantage"]:
@@ -241,10 +269,8 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
                 if mc and mc.isdigit():
                     return f"${int(mc):,}"
                 else:
-                    # Fallback to yfinance if AV gives nothing
-                    ticker_obj = yf.Ticker(map_ticker_for_source(ticker, "yfinance"))
-                    mc = ticker_obj.info.get("marketCap")
-                    return f"${mc:,.0f}" if mc else "N/A"
+                    # fallback to yfinance
+                    return get_market_cap(ticker, source="yfinance")
             else:
                 return "N/A"
 
@@ -899,7 +925,7 @@ def get_stock_info(ticker, data_source="yfinance"):
         'industry': 'Unknown',
         'currency': 'USD'
     })
-    info['market_cap'] = get_market_cap(base_ticker, source=data_source)
+    info['market_cap'] = get_market_cap(ticker, source=data_source)
     return info
 
 # Safe display helper
