@@ -229,9 +229,9 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
 
         if source.lower() == "yfinance":
             ticker_obj = yf.Ticker(mapped_ticker)
-
             mc = None
-            # 1) fast_info
+
+            # 1) Try fast_info
             try:
                 fi = getattr(ticker_obj, "fast_info", None)
                 if fi:
@@ -239,7 +239,7 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
             except Exception:
                 mc = None
 
-            # 2) get_info() / info
+            # 2) Fall back to info/get_info
             if not mc:
                 try:
                     info = ticker_obj.get_info() if hasattr(ticker_obj, "get_info") else ticker_obj.info
@@ -247,10 +247,10 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
                 except Exception:
                     mc = None
 
-            # 3) last resort: sharesOutstanding * last_price
+            # 3) Compute fallback: sharesOutstanding × last_price
             if not mc:
                 try:
-                    info = info if 'info' in locals() else (ticker_obj.get_info() if hasattr(ticker_obj,"get_info") else ticker_obj.info)
+                    info = info if 'info' in locals() else ticker_obj.get_info()
                     shares = info.get("sharesOutstanding")
                     last_price = (getattr(ticker_obj, "fast_info", {}) or {}).get("last_price") or info.get("currentPrice")
                     if shares and last_price:
@@ -258,7 +258,11 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
                 except Exception:
                     mc = None
 
-            return f"${mc:,.0f}" if mc else "N/A"
+            # Format
+            if mc:
+                return f"₹{mc:,.0f}" if mapped_ticker.endswith(".NS") else f"${mc:,.0f}"
+            else:
+                return "N/A"
 
         elif source.lower() in ["alpha_vantage", "alphavantage"]:
             url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={mapped_ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
@@ -269,7 +273,6 @@ def get_market_cap(ticker: str, source: str = "yfinance") -> str:
                 if mc and mc.isdigit():
                     return f"${int(mc):,}"
                 else:
-                    # fallback to yfinance
                     return get_market_cap(ticker, source="yfinance")
             else:
                 return "N/A"
