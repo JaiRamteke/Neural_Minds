@@ -649,21 +649,27 @@ def make_pipeline(estimator):
         ("model", estimator),
     ])
 
-def time_series_cv_score(pipe, X, y, n_splits=5):
-    kf = TimeSeriesSplit(n_splits=n_splits)
-    scores = []
-    for train_idx, test_idx in kf.split(X):
+def time_series_cv_score(model, X, y, n_splits=5):
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    rmse_list, mae_list, r2_list = [], [], []
+    for train_idx, test_idx in tscv.split(X):
         Xtr, Xte = X.iloc[train_idx], X.iloc[test_idx]
         ytr, yte = y.iloc[train_idx], y.iloc[test_idx]
-        
-        fitted = pipe.fit(Xtr, ytr)   # ✅ fit pipeline before predicting
-        pred   = fitted.predict(Xte)  # ✅ now safe
-        scores.append({
-            "rmse": mean_squared_error(yte, pred, squared=False),
-            "mae": mean_absolute_error(yte, pred),
-            "r2": r2_score(yte, pred),
-        })
-    return pd.DataFrame(scores)
+        pipe = Pipeline([
+            ("imp", SimpleImputer(strategy="median")),
+            ("sc", StandardScaler()),
+            ("m", model)
+        ])
+        pipe.fit(Xtr, ytr)
+        pred = pipe.predict(Xte)
+        rmse_list.append(np.sqrt(mean_squared_error(yte, pred)))
+        mae_list.append(mean_absolute_error(yte, pred))
+        r2_list.append(r2_score(yte, pred))
+    return {
+        "rmse_mean": float(np.mean(rmse_list)),
+        "mae_mean":  float(np.mean(mae_list)),
+        "r2_mean":   float(np.mean(r2_list))
+    }
 
 def select_model(model_name, return_param_grid=False):
     models, param_grids = get_model_space(return_param_grids=True)
@@ -1242,8 +1248,7 @@ def main():
                                     ("sc", StandardScaler()),
                                     ("m", mdl)])
                 if cv_strategy.startswith("Walk"):
-                    pipeline = make_pipeline(mdl)   # wrap raw model into pipeline
-                    cv_scores = time_series_cv_score(pipeline, X, y, n_splits=nfolds)
+                    cv_scores = time_series_cv_score(mdl, X, y, n_splits=nfolds)
                     cv_table = pd.DataFrame([{"model": name, **cv_scores}])
                 else:
                     cv_table = pd.DataFrame()
@@ -1255,8 +1260,7 @@ def main():
                                     ("sc", StandardScaler()),
                                     ("m", mdl)])
                 if cv_strategy.startswith("Walk"):
-                    pipeline = make_pipeline(mdl)   # wrap raw model into pipeline
-                    cv_scores = time_series_cv_score(pipeline, X, y, n_splits=nfolds)
+                    cv_scores = time_series_cv_score(mdl, X, y, n_splits=nfolds)
                     cv_table = pd.DataFrame([{"model": model_choice, **cv_scores}])
                 else:
                     cv_table = pd.DataFrame()
