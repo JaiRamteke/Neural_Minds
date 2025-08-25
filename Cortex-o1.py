@@ -650,6 +650,10 @@ def make_pipeline(estimator):
     ])
 
 def time_series_cv_score(model, X, y, n_splits=5):
+    if model is None or not hasattr(model, "fit") or not hasattr(model, "predict"):
+        raise ValueError("Selected model is unavailable or invalid (no fit/predict). "
+                         "If you chose XGBoost, please install it: pip install xgboost")
+    tscv = TimeSeriesSplit(n_splits=n_splits)
     tscv = TimeSeriesSplit(n_splits=n_splits)
     rmse_list, mae_list, r2_list = [], [], []
     for train_idx, test_idx in tscv.split(X):
@@ -1058,7 +1062,8 @@ def main():
 
         # Model selection
         st.markdown("### 🤖 Select Model for Forecasting")
-        available = list(get_model_space(return_param_grids=True)[0].keys())
+        models, _ = get_model_space(return_param_grids=True)
+        available = [name for name, est in models.items() if est is not None]
         model_choice = st.selectbox(
             "Model",
             available,
@@ -1243,7 +1248,7 @@ def main():
             
             if "Manual" in model_choice:
                 name = model_choice[0]
-                mdl = get_model_space()[name]
+                mdl = select_model(name)
                 final_pipe = Pipeline([("imp", SimpleImputer(strategy="median")),
                                     ("sc", StandardScaler()),
                                     ("m", mdl)])
@@ -1255,7 +1260,7 @@ def main():
                 best_name = name
             else:
                 # Normal case (any selected model)
-                mdl = get_model_space()[model_choice]
+                mdl = select_model(model_choice)
                 final_pipe = Pipeline([("imp", SimpleImputer(strategy="median")),
                                     ("sc", StandardScaler()),
                                     ("m", mdl)])
