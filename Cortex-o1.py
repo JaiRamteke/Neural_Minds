@@ -1653,7 +1653,7 @@ def main():
                 ### ✨ Premium Features
                 - 🔄 **Multi-API Integration -** Seamless fallback between yfinance & Alpha Vantage
                 - 📡 **API Status Check -** Automatic health check for data sources before fetching
-                - 🤖 **Advanced AI Models -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
+                - 🤖 **Advanced AI Models -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost  
                 - 📊 **Comprehensive Analysis -** Technical indicators + market diagnostics  
                 - 🎨 **Premium Interface -** Clean, responsive UI with interactive widgets  
                 - 📈 **Real-time Charts -** Plotly-powered OHLC, RSI, and Volume analysis  
@@ -1710,29 +1710,45 @@ def main():
                             
                     """, unsafe_allow_html=True)
                 
-            with st.expander("🔄 Feature Pipeline (Cyclic View)"):
+            with st.expander("🔮 AI Prediction Workflow"):
                 st.markdown("""
-                ```
-                    🔄 Continuous Prediction Cycle
+                <pre style='font-size:15px; line-height:1.6em; font-weight:600; background: linear-gradient(135deg, #1f1c2c, #928DAB); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
 
-                📡 Data Fetching (yfinance / Alpha Vantage)
-                            ↓
-                    🛠️ Feature Engineering
-                (MA20, MA50, RSI, Volatility, Momentum, Lags, Z-Scores, Volume)
-                            ↓
-                    🤖 Model Training
-            (Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*)
-                            ↓
-                    🔮 Predictions & Signals
-            (Price / Returns | Neutral, Bullish, Bearish)
-                            ↓
-                    📊 Visualization & Exports
-                (Charts, CSV, Signals, CV Summary, Narratives)
-                            ↓
-                    🔁 New Market Data Arrives
-                            ↑
-                ```
-    """, unsafe_allow_html=True)
+            🌐 <b>Data Universe</b>  
+            └─ 📡 <span style="color:#4FC3F7;">Sources</span>: Yahoo Finance | Alpha Vantage  
+                    ↓  
+            🏦 <b>Market Selection</b>  
+            └─ 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
+                    ↓  
+            📊 <b>Feature Engineering</b>  
+            ├─ 📈 <span style="color:#FFD54F;">Moving Averages</span> (20d, 50d)  
+            ├─ 📊 <span style="color:#81C784;">RSI & Momentum</span>  
+            ├─ 🌐 <span style="color:#E57373;">Volatility & Z-Scores</span>  
+            ├─ ⏪ <span style="color:#BA68C8;">Lag Features</span>  
+            └─ 📉 <span style="color:#4DB6AC;">Volume Signals</span>  
+                    ↓  
+            🤖 <b>AI & ML Models</b>  
+            └─ Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
+                    ↓  
+            🔮 <b>Predictions</b>  
+            ├─ 💰 Price Forecast  
+            └─ 📈 Return Forecast  
+                    ↓  
+            🧩 <b>Explainability</b>  
+            ├─ 🌍 <span style="color:#FF8A65;">Global:</span> Feature Importance  
+            └─ 🎯 <span style="color:#4DD0E1;">Local:</span> SHAP Waterfall & Narrative  
+                    ↓  
+            🚦 <b>Signals</b>  
+            ├─ Neutral | Mild Bullish | Strong Bearish...  
+            └─ ⚡ Narrative Explanations 
+                    ↓  
+            📥 <b>Exports & Insights</b>  
+            ├─ 📊 Charts  
+            ├─ 📑 CV Summary   
+            └─ 📂 CSV Data  
+
+                </pre>
+                """, unsafe_allow_html=True)
 
         with col2:
             st.markdown("""
@@ -1743,7 +1759,7 @@ def main():
                 4. 📊 **Select Stock -** Pick from curated tickers or enter a custom symbol  
                 5. ⏱️ **Choose Time Period -** Analyze from **1 month → 5 years**  
                 6. 🧮 **Configure Forecasting -**  
-                        - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*)  
+                        - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost)  
                         - Choose **Target Type** → Return (%) or Price (level)  
                         - Pick **CV Strategy** → Walk-forward (5 folds) / Hold-out (20%)  
                         - Enable **Hyperparameter Tuning** (set iteration budget)  
