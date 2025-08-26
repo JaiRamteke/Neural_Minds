@@ -1712,40 +1712,65 @@ def main():
                 
             with st.expander("🔮 AI Prediction Workflow"):
                 st.markdown("""
-            <div style='font-size:15px; line-height:1.9em; font-weight:600;'>
+            <div style='font-family:monospace; font-size:15px; line-height:2em; font-weight:600;'>
 
-            ⬇️ **Step 1 — API Status Check**  
-            &nbsp;&nbsp;&nbsp;&nbsp;🔌 Verify connection → Yahoo Finance | Alpha Vantage  
+            ⬇️  
+            <div style="border:2px solid #4CAF50; border-radius:10px; padding:8px; background:#E8F5E9;">
+            ✅ API Status Check  
+            🔌 Verify Yahoo Finance | Alpha Vantage  
+            </div>
 
-            ⬇️ **Step 2 — Data Loaded**  
-            &nbsp;&nbsp;&nbsp;&nbsp;🔢 Fetch & show number of data points  
+            ⬇️  
+            <div style="border:2px solid #2196F3; border-radius:10px; padding:8px; background:#E3F2FD;">
+            📊 Data Loaded  
+            🔢 Show # of data points  
+            </div>
 
-            ⬇️ **Step 3 — Market Selection**  
-            &nbsp;&nbsp;&nbsp;&nbsp;🌍 Choose: 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
+            ⬇️  
+            <div style="border:2px solid #9C27B0; border-radius:10px; padding:8px; background:#F3E5F5;">
+            🏦 Market Selection  
+            🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
+            </div>
 
-            ⬇️ **Step 4 — Feature Engineering**  
-            &nbsp;&nbsp;&nbsp;&nbsp;📈 Moving Averages (20d, 50d)  
-            &nbsp;&nbsp;&nbsp;&nbsp;📊 RSI & Momentum  
-            &nbsp;&nbsp;&nbsp;&nbsp;🌐 Volatility & Z-Scores  
-            &nbsp;&nbsp;&nbsp;&nbsp;⏪ Lag Features  
-            &nbsp;&nbsp;&nbsp;&nbsp;📉 Volume Signals  
+            ⬇️  
+            <div style="border:2px solid #FF9800; border-radius:10px; padding:8px; background:#FFF3E0;">
+            🤖 AI & ML Models  
+            - Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
+            - CV: Walk-forward (5 folds) | Hold-out (20%)  
+            - ⚡ Hyperparameter tuning iterations  
+            - 📅 Days to predict (1–30)  
+            </div>
 
-            ⬇️ **Step 5 — AI & ML Models**  
-            &nbsp;&nbsp;&nbsp;&nbsp;🤖 Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
+            ⬇️  
+            <div style="border:2px solid #795548; border-radius:10px; padding:8px; background:#EFEBE9;">
+            ⚙️ Feature Engineering  
+            📈 Moving Averages | 📊 RSI | 🌐 Volatility | ⏪ Lags | 📉 Volume | Z-Scores  
+            </div>
 
-            ⬇️ **Step 6 — Predictions**  
-            &nbsp;&nbsp;&nbsp;&nbsp;💰 Price Forecast  
-            &nbsp;&nbsp;&nbsp;&nbsp;📈 Return Forecast  
+            ⬇️  
+            <div style="border:2px solid #FF5722; border-radius:10px; padding:8px; background:#FBE9E7;">
+            🔮 Predictions  
+            💰 Price Forecast | 📈 Return Forecast  
+            </div>
 
-            ⬇️ **Step 7 — Explainability**  
-            &nbsp;&nbsp;&nbsp;&nbsp;🌍 Global → Feature Importance  
-            &nbsp;&nbsp;&nbsp;&nbsp;🎯 Local → SHAP Waterfall + Narrative  
+            ⬇️  
+            <div style="border:2px solid #3F51B5; border-radius:10px; padding:8px; background:#E8EAF6;">
+            🧩 Explainability  
+            🌍 Global: Feature Importance  
+            🎯 Local: SHAP + Narrative  
+            </div>
 
-            ⬇️ **Step 8 — Trading Signals**  
-            &nbsp;&nbsp;&nbsp;&nbsp;🟢 Bullish | 🟡 Neutral | 🔴 Bearish  
+            ⬇️  
+            <div style="border:2px solid #009688; border-radius:10px; padding:8px; background:#E0F2F1;">
+            🚦 Trading Signals  
+            🟢 Bullish | 🟡 Neutral | 🔴 Bearish  
+            </div>
 
-            ⬇️ **Step 9 — Exports & Insights**  
-            &nbsp;&nbsp;&nbsp;&nbsp;📊 Charts | 📑 CV Summary | ⚡ Narrative | 📂 CSV Data  
+            ⬇️  
+            <div style="border:2px solid #607D8B; border-radius:10px; padding:8px; background:#ECEFF1;">
+            📥 Exports & Insights  
+            📊 Charts | 📑 CV Summary | ⚡ Narrative | 📂 CSV Data  
+            </div>
 
             </div>
                 """, unsafe_allow_html=True)
