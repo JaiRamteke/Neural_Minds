@@ -1651,15 +1651,15 @@ def main():
         with col1:
             st.markdown("""
                 ### ✨ Premium Features
-                - 🔄 **Multi-API Integration**: Seamless fallback between yfinance & Alpha Vantage
-                - 📡 **API Status Check**: Automatic health check for data sources before fetching
-                - 🤖 **Advanced AI Models**: Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
-                - 📊 **Comprehensive Analysis**: Technical indicators + market diagnostics  
-                - 🎨 **Premium Interface**: Clean, responsive UI with interactive widgets  
-                - 📈 **Real-time Charts**: Plotly-powered OHLC, RSI, and Volume analysis  
-                - 🔍 **Performance Metrics**: RMSE, MAE, R², CV results & predictability score  
-                - 🧩 **Explainable AI**: Global + Local model interpretation with plain-English narrative  
-                - 📥 **Smart Exports**: Downloadable reports for data, charts, signals & CV results  
+                - 🔄 **Multi-API Integration -** Seamless fallback between yfinance & Alpha Vantage
+                - 📡 **API Status Check -** Automatic health check for data sources before fetching
+                - 🤖 **Advanced AI Models -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
+                - 📊 **Comprehensive Analysis -** Technical indicators + market diagnostics  
+                - 🎨 **Premium Interface -** Clean, responsive UI with interactive widgets  
+                - 📈 **Real-time Charts -** Plotly-powered OHLC, RSI, and Volume analysis  
+                - 🔍 **Performance Metrics -** RMSE, MAE, R², CV results & predictability score  
+                - 🧩 **Explainable AI -** Global + Local model interpretation with plain-English narrative  
+                - 📥 **Smart Exports -** Downloadable reports for data, charts, signals & CV results  
 
             """)
 
@@ -1702,35 +1702,37 @@ def main():
         with col2:
             st.markdown("""
                 ### 🎯 How It Works
-                1. 📡 **Select Data Source**: *Yahoo Finance (yfinance)* or *Alpha Vantage* 
-                2. ✅ **API Status Check**: System verifies if chosen API is healthy before fetching 
-                3. 🌍 **Select Market**: Choose **US Stocks** or **Indian Stocks**  
-                4. 📊 **Select Stock**: Pick from curated tickers or enter a custom symbol  
-                5. ⏱️ **Choose Time Period**: Analyze from **1 month → 5 years**  
-                6. 🧮 **Configure Forecasting**:  
-                - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*)  
-                - Choose **Target Type** → Return (%) or Price (level)  
-                - Pick **CV Strategy** → Walk-forward (5 folds) / Hold-out (20%)  
-                - Enable **Hyperparameter Tuning** (set iteration budget)  
-                - Set **Days to Predict** (1 - 30)  
-                7. 🤖 **AI Analysis**: Models learn market patterns & indicators  
-                8. 🔮 **Predictions**: Forecast returns or prices with confidence  
-                9. 📈 **Visualize & Explain**: Interactive charts, validation results, signals, narrative explanations  
+                1. 📡 **Select Data Source -** *Yahoo Finance (yfinance)* or *Alpha Vantage* 
+                2. ✅ **API Status Check -** System verifies if chosen API is healthy before fetching 
+                3. 🌍 **Select Market -** Choose **US Stocks** or **Indian Stocks**  
+                4. 📊 **Select Stock -** Pick from curated tickers or enter a custom symbol  
+                5. ⏱️ **Choose Time Period -** Analyze from **1 month → 5 years**  
+                6. 🧮 **Configure Forecasting -**  
+                        - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*)  
+                        - Choose **Target Type** → Return (%) or Price (level)  
+                        - Pick **CV Strategy** → Walk-forward (5 folds) / Hold-out (20%)  
+                        - Enable **Hyperparameter Tuning** (set iteration budget)  
+                        - Set **Days to Predict** (1 - 30)  
+                7. 🤖 **AI Analysis -** Models learn market patterns & indicators  
+                8. 🔮 **Predictions -** Forecast returns or prices with confidence  
+                9. 📈 **Visualize & Explain -** Interactive charts, validation results, signals, narrative explanations  
 
                 ### 🛠️ Technical Features
-                - 🧠 **Models Supported:** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
-                - 🔁 **Validation:** Walk-forward CV, Hold-out tests, Predictability scoring  
-                - 📊 **Indicators:** Moving Averages (20/50d), RSI, Volatility, Momentum, Lag Features, Z-Scores  
-                - 📈 **Visualizations:** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
-                - ⚡ **Explainable AI:**  
+                - 📊 **Data Loaded Info -** Automatically shows **number of data points** fetched for the selected stock
+                - 🧠 **Models Supported -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
+                - 🔁 **Validation -** Walk-forward CV, Hold-out tests, Predictability scoring  
+                - 📊 **Indicators -** Moving Averages (20/50d), RSI, Volatility, Momentum, Lag Features, Z-Scores
+                - 🚦 **Trading Signals -** Highlights model's latest signal (e.g., *Neutral*, *Mild Bullish*, *Mild Bearish*, *Strong Bullish*, *Strong Bearish*)  
+                - 📈 **Visualizations -** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
+                - ⚡ **Explainable AI -**  
                 - *Global:* Permutation Importance  
                 - *Local:* SHAP Waterfall & Narrative  
-                - 📥 **Exports:**  
-                - Download **data (CSV)**  
-                - Download **charts**  
-                - Download **signals**  
-                - Download **CV summary**  
-                - Download **narrative explanations**  
+                - 📥 **Exports -**  
+                    - Download **data (CSV)**  
+                    - Download **charts**  
+                    - Download **signals**  
+                    - Download **CV summary**  
+                    - Download **narrative explanations**  
     
 
                 ### 💡 Pro Tips
