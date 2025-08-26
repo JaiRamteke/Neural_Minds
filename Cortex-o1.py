@@ -1722,7 +1722,6 @@ def main():
                 - 🧠 **Models Supported -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
                 - 🔁 **Validation -** Walk-forward CV, Hold-out tests, Predictability scoring  
                 - 📊 **Indicators -**
-                        
                         - **Moving Averages - 20-day, 50-day**
                         - **RSI(Relative Strength Index)**
                         - **Volatility(rolling standard deviation of returns)**
