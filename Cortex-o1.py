@@ -1770,9 +1770,9 @@ def main():
                 - *Local:* SHAP Waterfall & Narrative 
                 - **Narrative explanations**   
                 - 📥 **Exports -**  
-                    - Download **Data table (CSV)**  
-                    - Download **Charts**   
-                    - Download **CV summary**  
+                    - Download -**Data table (CSV)**  
+                    - Download -**Charts**   
+                    - Download -**CV summary**  
                     
     
 
