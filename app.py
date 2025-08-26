@@ -52,7 +52,7 @@ ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
 AV_BASE_URL = 'https://www.alphavantage.co/query'
 
 # Page config
-st.set_page_config(page_title="Neural Minds", page_icon="brain.png", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Neural Minds Predictive Modeling", page_icon="brain.png", layout="wide", initial_sidebar_state="expanded")
 
 # ---------------------
 # UI CSS (keep your look & feel)
@@ -1644,84 +1644,111 @@ def main():
         """, unsafe_allow_html=True)
 
     else:
-        # Welcome screen
-        st.markdown(
-            """
-            <h2 style='
-                text-align: center;
-                font-size: 40px;
-                font-weight: 800;
-                background: -webkit-linear-gradient(45deg, #4facfe, #00f2fe);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                text-decoration: none;
-                margin-bottom: 20px;
-            '>
-                🧠 Cortex-o1 Predictive Model
-            </h2>
-            """,
-            unsafe_allow_html=True
-        )
+    # Welcome screen
 
         col1, col2 = st.columns(2)
 
         with col1:
             st.markdown("""
-                ### ✨ Premium Features:
-                - 🔄 **Multi-API Integration**: Seamless data fetching from Alpha Vantage & yfinance
-                - 🤖 **Advanced AI Models**: Machine learning-powered predictions
-                - 📊 **Comprehensive Analysis**: Technical indicators & market insights
-                - 🎨 **Premium Interface**: Beautiful, responsive dark theme
-                - 📈 **Real-time Charts**: Interactive Plotly visualizations
-                - 🔍 **Performance Metrics**: Detailed model evaluation & statistics
+                ### ✨ Premium Features
+                - 🔄 **Multi-API Integration**: Seamless fallback between yfinance & Alpha Vantage
+                - 📡 **API Status Check**: Automatic health check for data sources before fetching
+                - 🤖 **Advanced AI Models**: Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
+                - 📊 **Comprehensive Analysis**: Technical indicators + market diagnostics  
+                - 🎨 **Premium Interface**: Clean, responsive UI with interactive widgets  
+                - 📈 **Real-time Charts**: Plotly-powered OHLC, RSI, and Volume analysis  
+                - 🔍 **Performance Metrics**: RMSE, MAE, R², CV results & predictability score  
+                - 🧩 **Explainable AI**: Global + Local model interpretation with plain-English narrative  
+                - 📥 **Smart Exports**: Downloadable reports for data, charts, signals & CV results  
 
-                ### 🌍 Global Market Coverage:
-                **🇺🇸 US Stocks:**
-                - Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL)
-                - Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA)
-                - Meta (META), Netflix (NFLX)
-                - JPMorgan (JPM), Visa (V)
-                - BlackRock (BLK), Goldman Sachs (GS), State Street (STT)
+            """)
 
-                **🇮🇳 Indian Stocks:**
-                - Reliance (RELIANCE.NSE), TCS (TCS.NSE), Infosys (INFY.NSE)
-                - HDFC Bank (HDFCBANK.NSE), Wipro (WIPRO.NSE), ITC (ITC.NSE)
-                - SBI (SBIN.NSE), Kotak Bank (KOTAKBANK.NSE), Bharti Airtel (BHARTIARTL.NSE)
-                - Hindustan Unilever (HINDUNILVR.NSE), Tata Motors (TATAMOTORS.NSE)
-                - Tata Steel (TATASTEEL.NSE), Paras Defence (PARAS.NSE)
-                """)
+            with st.expander("🌍 Global Market Coverage"):
+                st.markdown("""
+                    ### 🇺🇸 US Stocks (41)
+                    **Tech Giants:**  
+                    Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL), Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA), Meta (META), Netflix (NFLX), Oracle (ORCL), Cisco (CSCO)  
+                    **Finance & Asset Management:**  
+                    JPMorgan (JPM), Goldman Sachs (GS), Morgan Stanley (MS), Citigroup (C), Bank of America (BAC),  
+                    Visa (V), Mastercard (MA), BlackRock (BLK), State Street (STT), Northern Trust (NTRS),  
+                    Berkshire Hathaway (BRK.B), Barclays (BCS), UBS (UBS), Deutsche Bank (DB)  
+                    **Healthcare & Pharma:**  
+                    Johnson & Johnson (JNJ), Pfizer (PFE), Merck (MRK), Eli Lilly (LLY), UnitedHealth (UNH)  
+                    **Energy & Industrials:**  
+                    ExxonMobil (XOM), Chevron (CVX), Boeing (BA), Lockheed Martin (LMT), Northrop Grumman (NOC), Ford (F), General Motors (GM)  
+                    **Consumer & Retail:**  
+                    Walmart (WMT), Procter & Gamble (PG), Coca-Cola (KO), PepsiCo (PEP), Disney (DIS)  
+                    ---
+
+                    ### 🇮🇳 Indian Stocks (34)
+                    **Conglomerates & Energy:**  
+                    Reliance (RELIANCE.NS), ONGC (ONGC.NS), Adani Enterprises (ADANIENT.NS), Adani Green (ADANIGREEN.NS), Adani Ports (ADANIPORTS.NS)  
+                    **IT & Tech:**  
+                    TCS (TCS.NS), Infosys (INFY.NS), Wipro (WIPRO.NS), Tech Mahindra (TECHM.NS), HCL Technologies (HCLTECH.NS)  
+                    **Banking & Finance:**  
+                    HDFC Bank (HDFCBANK.NS), ICICI Bank (ICICIBANK.NS), Kotak Bank (KOTAKBANK.NS), SBI (SBIN.NS), Axis Bank (AXISBANK.NS), Bajaj Finance (BAJFINANCE.NS)  
+                    **Consumer & FMCG:**  
+                    Hindustan Unilever (HINDUNILVR.NS), ITC (ITC.NS), Asian Paints (ASIANPAINT.NS), Nestle India (NESTLEIND.NS), Maruti Suzuki (MARUTI.NS)  
+                    **Industrials & Materials:**  
+                    Tata Motors (TATAMOTORS.NS), Mahindra & Mahindra (M&M.NS), Tata Steel (TATASTEEL.NS), JSW Steel (JSWSTEEL.NS), UltraTech Cement (ULTRACEMCO.NS)  
+                    **Healthcare & Pharma:**  
+                    Sun Pharma (SUNPHARMA.NS), Dr. Reddy's (DRREDDY.NS), Cipla (CIPLA.NS), Apollo Hospitals (APOLLOHOSP.NS)  
+                    **Defense & Telecom:**  
+                    Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.NS)  
+                    """, unsafe_allow_html=True)
 
         with col2:
             st.markdown("""
-                ### 🎯 How It Works:
-                1. 📊 **Select Your Stock**: Pick from curated tickers or enter a custom symbol  
-                2. ⏱️ **Choose Time Period**: Analyze 1 month → 5 years of data  
-                3. 🤖 **AI Analysis**: ML models learn market patterns  
-                4. 🔮 **Get Predictions**: Forecast next-day/multi-day prices with confidence  
-                5. 📈 **Visualize Results**: Interactive charts & detailed analytics
+                ### 🎯 How It Works
+                1. 📡 **Select Data Source**: *Yahoo Finance (yfinance)* or *Alpha Vantage* 
+                2. ✅ **API Status Check**: System verifies if chosen API is healthy before fetching 
+                3. 🌍 **Select Market**: Choose **US Stocks** or **Indian Stocks**  
+                4. 📊 **Select Stock**: Pick from curated tickers or enter a custom symbol  
+                5. ⏱️ **Choose Time Period**: Analyze from **1 month → 5 years**  
+                6. 🧮 **Configure Forecasting**:  
+                - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*)  
+                - Choose **Target Type** → Return (%) or Price (level)  
+                - Pick **CV Strategy** → Walk-forward (5 folds) / Hold-out (20%)  
+                - Enable **Hyperparameter Tuning** (set iteration budget)  
+                - Set **Days to Predict** (1 - 30)  
+                7. 🤖 **AI Analysis**: Models learn market patterns & indicators  
+                8. 🔮 **Predictions**: Forecast returns or prices with confidence  
+                9. 📈 **Visualize & Explain**: Interactive charts, validation results, signals, narrative explanations  
 
-                ### 🛠️ Technical Features:
-                - 🧠 **Machine Learning**: Random Forest, Feature Engineering  
-                - 🔁 **Cross-validation**: Performance metrics built-in  
-                - 📊 **Technical Indicators**: Moving Averages (20/50d), RSI, Volume Analysis  
-                - 📈 **Visualizations**: Interactive Price & Volume charts, RSI Momentum, Feature Importance  
+                ### 🛠️ Technical Features
+                - 🧠 **Models Supported:** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
+                - 🔁 **Validation:** Walk-forward CV, Hold-out tests, Predictability scoring  
+                - 📊 **Indicators:** Moving Averages (20/50d), RSI, Volatility, Momentum, Lag Features, Z-Scores  
+                - 📈 **Visualizations:** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
+                - ⚡ **Explainable AI:**  
+                - *Global:* Permutation Importance  
+                - *Local:* SHAP Waterfall & Narrative  
+                - 📥 **Exports:**  
+                - Download **data (CSV)**  
+                - Download **charts**  
+                - Download **signals**  
+                - Download **CV summary**  
+                - Download **narrative explanations**  
+    
 
-                ### 💡 Pro Tips:
-                - 📅 Use longer timeframes (1y+) for more reliable predictions  
-                - 🌍 Consider external market/economic context  
-                - ⏳ Compare predictions across different timeframes  
-                - 🛡️ Always diversify your portfolio  
-                """)
-                        
+                ### 💡 Pro Tips
+                - 📅 Use **longer timeframes (≥1y)** for more reliable training  
+                - 🌍 Always **consider global & economic context** along with technicals  
+                - ⏳ Compare **predictions across different horizons** (short vs long term)  
+                - 🧪 Test **both CV strategies** (Walk-forward & Hold-out) for robustness  
+                - ⚡ Increase **tuning iterations** (≥20) for stronger model performance  
+                - 🛡 Diversify portfolio: never rely on a single stock or sector  
+            """)
+
         # 👇 Bottom full-width message
         st.markdown(
             """
             ---
             
-👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+    👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
             """,
             unsafe_allow_html=True
-)
+        )
 
 if __name__ == "__main__":
     main()
