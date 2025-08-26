@@ -1712,66 +1712,42 @@ def main():
                 
             with st.expander("🔮 AI Prediction Workflow"):
                 st.markdown("""
-            <pre style='font-size:15px; line-height:1.7em; font-weight:600;'>
+            <div style='font-size:15px; line-height:1.9em; font-weight:600;'>
 
-            ✅ <b>API Status Check</b>  
-            └─ 🔌 Connection to Yahoo Finance | Alpha Vantage  
+            ⬇️ **Step 1 — API Status Check**  
+            &nbsp;&nbsp;&nbsp;&nbsp;🔌 Verify connection → Yahoo Finance | Alpha Vantage  
 
-            ⬇️  
+            ⬇️ **Step 2 — Data Loaded**  
+            &nbsp;&nbsp;&nbsp;&nbsp;🔢 Fetch & show number of data points  
 
-            📊 <b>Data Loaded</b>  
-            └─ 🔢 <span style="color:#FDD835;"># of Data Points</span> fetched successfully  
+            ⬇️ **Step 3 — Market Selection**  
+            &nbsp;&nbsp;&nbsp;&nbsp;🌍 Choose: 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
 
-            ⬇️  
+            ⬇️ **Step 4 — Feature Engineering**  
+            &nbsp;&nbsp;&nbsp;&nbsp;📈 Moving Averages (20d, 50d)  
+            &nbsp;&nbsp;&nbsp;&nbsp;📊 RSI & Momentum  
+            &nbsp;&nbsp;&nbsp;&nbsp;🌐 Volatility & Z-Scores  
+            &nbsp;&nbsp;&nbsp;&nbsp;⏪ Lag Features  
+            &nbsp;&nbsp;&nbsp;&nbsp;📉 Volume Signals  
 
-            🌐 <b>Data Universe</b>  
-            └─ 📡 <span style="color:#4FC3F7;">Sources</span>: Yahoo Finance | Alpha Vantage  
+            ⬇️ **Step 5 — AI & ML Models**  
+            &nbsp;&nbsp;&nbsp;&nbsp;🤖 Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
 
-            ⬇️  
+            ⬇️ **Step 6 — Predictions**  
+            &nbsp;&nbsp;&nbsp;&nbsp;💰 Price Forecast  
+            &nbsp;&nbsp;&nbsp;&nbsp;📈 Return Forecast  
 
-            🏦 <b>Market Selection</b>  
-            └─ 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
+            ⬇️ **Step 7 — Explainability**  
+            &nbsp;&nbsp;&nbsp;&nbsp;🌍 Global → Feature Importance  
+            &nbsp;&nbsp;&nbsp;&nbsp;🎯 Local → SHAP Waterfall + Narrative  
 
-            ⬇️  
+            ⬇️ **Step 8 — Trading Signals**  
+            &nbsp;&nbsp;&nbsp;&nbsp;🟢 Bullish | 🟡 Neutral | 🔴 Bearish  
 
-            ⚙️ <b>Feature Engineering</b>  
-            ├─ 📈 Moving Averages (20d, 50d)  
-            ├─ 📊 RSI & Momentum  
-            ├─ 🌐 Volatility & Z-Scores  
-            ├─ ⏪ Lag Features  
-            └─ 📉 Volume Signals  
+            ⬇️ **Step 9 — Exports & Insights**  
+            &nbsp;&nbsp;&nbsp;&nbsp;📊 Charts | 📑 CV Summary | ⚡ Narrative | 📂 CSV Data  
 
-            ⬇️  
-
-            🤖 <b>AI & ML Models</b>  
-            └─ Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
-
-            ⬇️  
-
-            🔮 <b>Predictions</b>  
-            ├─ 💰 Price Forecast  
-            └─ 📈 Return Forecast  
-
-            ⬇️  
-
-            🧩 <b>Explainability</b>  
-            ├─ 🌍 Global: Feature Importance  
-            └─ 🎯 Local: SHAP Waterfall & Narrative  
-
-            ⬇️  
-
-            🚦 <b>Trading Signals</b>  
-            ├─ Neutral | Mild Bullish | Strong Bearish … 
-            └─⚡ Narrative Explanations 
-
-            ⬇️  
-
-            📥 <b>Exports & Insights</b>  
-            ├─ 📊 Charts  
-            ├─ 📑 CV Summary    
-            └─ 📂 CSV Data  
-
-            </pre>
+            </div>
                 """, unsafe_allow_html=True)
 
         with col2:
