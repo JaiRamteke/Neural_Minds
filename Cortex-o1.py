@@ -1712,67 +1712,53 @@ def main():
                 
             with st.expander("🔮 AI Prediction Workflow"):
                 st.markdown("""
-            <div style='font-family:monospace; font-size:15px; line-height:2em; font-weight:600;'>
+                ```
+                🔌 API Status Check  
+                └─ Yahoo Finance | Alpha Vantage  
 
-            ⬇️  
-            <div style="border:2px solid #4CAF50; border-radius:10px; padding:8px; background:#E8F5E9;">
-            ✅ API Status Check  
-            🔌 Verify Yahoo Finance | Alpha Vantage  
-            </div>
+                        │
+                        ▼
+                📊 Data Loaded  
+                └─ # of Data Points Fetched  
 
-            ⬇️  
-            <div style="border:2px solid #2196F3; border-radius:10px; padding:8px; background:#E3F2FD;">
-            📊 Data Loaded  
-            🔢 Show # of data points  
-            </div>
+                        │
+                        ▼
+                🏦 Market Selection  
+                └─ 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
 
-            ⬇️  
-            <div style="border:2px solid #9C27B0; border-radius:10px; padding:8px; background:#F3E5F5;">
-            🏦 Market Selection  
-            🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
-            </div>
+                        │
+                        ▼
+                🤖 Machine Learning Models  
+                ├─ Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
+                ├─ CV Strategy → Walk-forward (5 folds) | Hold-out (20%)  
+                ├─ ⚡ Hyperparameter Tuning (1-50 iterations)  
+                └─ 📅 Prediction Horizon (1-30 days)  
 
-            ⬇️  
-            <div style="border:2px solid #FF9800; border-radius:10px; padding:8px; background:#FFF3E0;">
-            🤖 AI & ML Models  
-            - Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
-            - CV: Walk-forward (5 folds) | Hold-out (20%)  
-            - ⚡ Hyperparameter tuning iterations  
-            - 📅 Days to predict (1–30)  
-            </div>
+                        │
+                        ▼
+                🛠️ Feature Engineering  
+                ├─ 📈 Moving Averages (20d, 50d)  
+                ├─ 📊 RSI (Momentum Oscillator)  
+                ├─ 🌐 Volatility (Std. Dev. of Returns)  
+                ├─ ⚡ Momentum (Rate of Change)  
+                ├─ ⏪ Lag Features (t-1, t-2, …)  
+                ├─ 🔄 Z-Scores (Mean Reversion)  
+                └─ 📉 Volume Analysis  
 
-            ⬇️  
-            <div style="border:2px solid #795548; border-radius:10px; padding:8px; background:#EFEBE9;">
-            ⚙️ Feature Engineering  
-            📈 Moving Averages | 📊 RSI | 🌐 Volatility | ⏪ Lags | 📉 Volume | Z-Scores  
-            </div>
+                        │
+                        ▼
+                🔮 Predictions & Signals  
+                ├─ 📊 Price Forecast | Return Forecast  
+                ├─ 🚦 Trading Signals → 🟢 Bullish | 🟡 Neutral | 🔴 Bearish  
+                └─ 📥 Exports → CSV | Charts | CV Summary |   
 
-            ⬇️  
-            <div style="border:2px solid #FF5722; border-radius:10px; padding:8px; background:#FBE9E7;">
-            🔮 Predictions  
-            💰 Price Forecast | 📈 Return Forecast  
-            </div>
-
-            ⬇️  
-            <div style="border:2px solid #3F51B5; border-radius:10px; padding:8px; background:#E8EAF6;">
-            🧩 Explainability  
-            🌍 Global: Feature Importance  
-            🎯 Local: SHAP + Narrative  
-            </div>
-
-            ⬇️  
-            <div style="border:2px solid #009688; border-radius:10px; padding:8px; background:#E0F2F1;">
-            🚦 Trading Signals  
-            🟢 Bullish | 🟡 Neutral | 🔴 Bearish  
-            </div>
-
-            ⬇️  
-            <div style="border:2px solid #607D8B; border-radius:10px; padding:8px; background:#ECEFF1;">
-            📥 Exports & Insights  
-            📊 Charts | 📑 CV Summary | ⚡ Narrative | 📂 CSV Data  
-            </div>
-
-            </div>
+                        │
+                        ▼
+                🧩 Explainability  
+                ├─ 🌍 Global → Feature Importance  
+                ├─ 🎯 Local → SHAP Waterfall + Narrative 
+                └─ 📝 Narrative Explaination 
+                ```
                 """, unsafe_allow_html=True)
 
         with col2:
