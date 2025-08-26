@@ -1643,13 +1643,13 @@ def main():
                 ### 📊 Feature Set
                 The predictive models use a rich set of engineered features that capture both **price action** and **market behavior**:
 
-                - 📈 **Moving Averages:** 20-day & 50-day simple moving averages  
-                - 📊 **RSI (Relative Strength Index):** Measures overbought/oversold momentum  
-                - 🌐 **Volatility:** Rolling standard deviation of returns (risk measure)  
-                - ⚡ **Momentum:** Rate of change of prices to capture trends  
-                - ⏪ **Lag Features:** Shifted past values of price/returns (memory of past behavior)  
-                - 🔄 **Z-Scores:** Standardized deviations from rolling mean (mean reversion signal)  
-                - 📉 **Volume Analysis:** Raw & derived volume-based indicators for market activity
+                - 📈 **Moving Averages -** 20-day & 50-day simple moving averages  
+                - 📊 **RSI (Relative Strength Index) -** Measures overbought/oversold momentum  
+                - 🌐 **Volatility -** Rolling standard deviation of returns (risk measure)  
+                - ⚡ **Momentum -** Rate of change of prices to capture trends  
+                - ⏪ **Lag Features -** Shifted past values of price/returns (memory of past behavior)  
+                - 🔄 **Z-Scores -** Standardized deviations from rolling mean (mean reversion signal)  
+                - 📉 **Volume Analysis -** Raw & derived volume-based indicators for market activity
 
             """)
 
@@ -1735,8 +1735,7 @@ def main():
                         ▼
                 🧩 Explainability  
                 ├─ 🌍 Global → Feature Importance  
-                ├─ 🎯 Local → SHAP Waterfall + Narrative 
-                └─ 📝 Narrative Explaination 
+                └─ 🎯 Local → SHAP Waterfall + 📝 Narrative Explaination
                 ```
                 """, unsafe_allow_html=True)
 
@@ -1766,13 +1765,12 @@ def main():
                 - 🚦 **Trading Signals -** Highlights model's latest signal (e.g., *Neutral*, *Mild Bullish*, *Mild Bearish*, *Strong Bullish*, *Strong Bearish*)  
                 - 📈 **Visualizations -** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
                 - ⚡ **Explainable AI -**  
-                - *Global:* Permutation Importance  
-                - *Local:* SHAP Waterfall & Narrative 
-                - **Narrative explanations**   
+                        - **Global -** Permutation Importance  
+                        - **Local -** SHAP Waterfall & Narrative Explaination  
                 - 📥 **Exports -**  
-                    - Download -** Data table (CSV)**  
-                    - Download -** Charts**   
-                    - Download -** CV summary**  
+                        - Download - **Data table (CSV)**  
+                        - Download - **Charts**   
+                        - Download - **CV summary**  
                     
     
 
