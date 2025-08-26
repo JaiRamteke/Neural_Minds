@@ -1712,42 +1712,66 @@ def main():
                 
             with st.expander("🔮 AI Prediction Workflow"):
                 st.markdown("""
-                <pre style='font-size:15px; line-height:1.6em; font-weight:600; background: linear-gradient(135deg, #1f1c2c, #928DAB); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
+            <pre style='font-size:15px; line-height:1.7em; font-weight:600;'>
+
+            ✅ <b>API Status Check</b>  
+            └─ 🔌 Connection to Yahoo Finance | Alpha Vantage  
+
+            ⬇️  
+
+            📊 <b>Data Loaded</b>  
+            └─ 🔢 <span style="color:#FDD835;"># of Data Points</span> fetched successfully  
+
+            ⬇️  
 
             🌐 <b>Data Universe</b>  
             └─ 📡 <span style="color:#4FC3F7;">Sources</span>: Yahoo Finance | Alpha Vantage  
-                    ↓  
+
+            ⬇️  
+
             🏦 <b>Market Selection</b>  
             └─ 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
-                    ↓  
-            📊 <b>Feature Engineering</b>  
-            ├─ 📈 <span style="color:#FFD54F;">Moving Averages</span> (20d, 50d)  
-            ├─ 📊 <span style="color:#81C784;">RSI & Momentum</span>  
-            ├─ 🌐 <span style="color:#E57373;">Volatility & Z-Scores</span>  
-            ├─ ⏪ <span style="color:#BA68C8;">Lag Features</span>  
-            └─ 📉 <span style="color:#4DB6AC;">Volume Signals</span>  
-                    ↓  
+
+            ⬇️  
+
+            ⚙️ <b>Feature Engineering</b>  
+            ├─ 📈 Moving Averages (20d, 50d)  
+            ├─ 📊 RSI & Momentum  
+            ├─ 🌐 Volatility & Z-Scores  
+            ├─ ⏪ Lag Features  
+            └─ 📉 Volume Signals  
+
+            ⬇️  
+
             🤖 <b>AI & ML Models</b>  
             └─ Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
-                    ↓  
+
+            ⬇️  
+
             🔮 <b>Predictions</b>  
             ├─ 💰 Price Forecast  
             └─ 📈 Return Forecast  
-                    ↓  
+
+            ⬇️  
+
             🧩 <b>Explainability</b>  
-            ├─ 🌍 <span style="color:#FF8A65;">Global:</span> Feature Importance  
-            └─ 🎯 <span style="color:#4DD0E1;">Local:</span> SHAP Waterfall & Narrative  
-                    ↓  
-            🚦 <b>Signals</b>  
-            ├─ Neutral | Mild Bullish | Strong Bearish...  
-            └─ ⚡ Narrative Explanations 
-                    ↓  
+            ├─ 🌍 Global: Feature Importance  
+            └─ 🎯 Local: SHAP Waterfall & Narrative  
+
+            ⬇️  
+
+            🚦 <b>Trading Signals</b>  
+            ├─ Neutral | Mild Bullish | Strong Bearish … 
+            └─⚡ Narrative Explanations 
+
+            ⬇️  
+
             📥 <b>Exports & Insights</b>  
             ├─ 📊 Charts  
-            ├─ 📑 CV Summary   
+            ├─ 📑 CV Summary    
             └─ 📂 CSV Data  
 
-                </pre>
+            </pre>
                 """, unsafe_allow_html=True)
 
         with col2:
