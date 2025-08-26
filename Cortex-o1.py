@@ -1536,6 +1536,7 @@ def main():
                     st.error("❌ Poor model performance. Predictions may be unreliable.")
                     st.warning("⚠️ Note: Consider increasing history length, adding features, or testing different algorithms.")
 
+
                 # Expandable explanation
                 with st.expander("📌 Why performance varies & fixes applied", expanded=True):
                     st.write("""
@@ -1546,28 +1547,6 @@ def main():
                     - **Iterative multi-day forecasting**: Step-by-step predictions, recomputing features at each step.
                     - **Diagnostics**: Predictability score flags tickers with inherently poor short-term signal.
                     """)
-
-                # Feature importances from inner estimator if available
-                inner_model = final_pipe.named_steps.get("model", None)
-                if inner_model is not None and hasattr(inner_model, "feature_importances_") and metrics.get("feature_names"):
-                    st.markdown("### 🔑 Top Features Contributing to Predictions")
-
-                    importances = inner_model.feature_importances_
-                    feature_names = metrics.get("feature_names", [])
-
-                    if len(feature_names) == len(importances):
-                        top_features = sorted(
-                            zip(feature_names, importances),
-                            key=lambda x: x[1],
-                            reverse=True
-                        )[:5]
-
-                        for f, imp in top_features:
-                            st.write(f"- **{f}**: {imp:.3f}")
-                    else:
-                        st.warning("⚠️ Feature names and importances do not match in length.")
-                else:
-                    st.info("ℹ️ Top features are not available for this model.")
 
                 # Optional: Prediction confidence
                 if "confidence" in metrics:
