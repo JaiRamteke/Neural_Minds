@@ -1678,6 +1678,7 @@ def main():
                     ExxonMobil (XOM), Chevron (CVX), Boeing (BA), Lockheed Martin (LMT), Northrop Grumman (NOC), Ford (F), General Motors (GM)  
                     **Consumer & Retail:**  
                     Walmart (WMT), Procter & Gamble (PG), Coca-Cola (KO), PepsiCo (PEP), Disney (DIS)  
+                            
                     ---
 
                     ### 🇮🇳 Indian Stocks (34)
@@ -1695,6 +1696,7 @@ def main():
                     Sun Pharma (SUNPHARMA.NS), Dr. Reddy's (DRREDDY.NS), Cipla (CIPLA.NS), Apollo Hospitals (APOLLOHOSP.NS)  
                     **Defense & Telecom:**  
                     Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.NS)  
+                            
                     """, unsafe_allow_html=True)
 
         with col2:
