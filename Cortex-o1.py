@@ -52,7 +52,7 @@ ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
 AV_BASE_URL = 'https://www.alphavantage.co/query'
 
 # Page config
-st.set_page_config(page_title="Neural Minds Predictive Modeling", page_icon="brain.png", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Neural Minds", page_icon="brain.png", layout="wide", initial_sidebar_state="expanded")
 
 # ---------------------
 # UI CSS (keep your look & feel)
@@ -1721,18 +1721,25 @@ def main():
                 - 📊 **Data Loaded Info -** Automatically shows **number of data points** fetched for the selected stock
                 - 🧠 **Models Supported -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
                 - 🔁 **Validation -** Walk-forward CV, Hold-out tests, Predictability scoring  
-                - 📊 **Indicators -** Moving Averages (20/50d), RSI, Volatility, Momentum, Lag Features, Z-Scores
+                - 📊 **Indicators -** 
+                        - **Moving Averages - 20-day, 50-day**
+                        - **RSI(Relative Strength Index)**
+                        - **Volatility(rolling standard deviation of returns)**
+                        - **Momentum(rate of change)**
+                        - **Lag Features(past price/returns shifted back in time)**
+                        - **Z-Scores(standardized values for mean reversion detection)**
+                        - **Volume Analysis**
                 - 🚦 **Trading Signals -** Highlights model's latest signal (e.g., *Neutral*, *Mild Bullish*, *Mild Bearish*, *Strong Bullish*, *Strong Bearish*)  
                 - 📈 **Visualizations -** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
                 - ⚡ **Explainable AI -**  
                 - *Global:* Permutation Importance  
-                - *Local:* SHAP Waterfall & Narrative  
+                - *Local:* SHAP Waterfall & Narrative 
+                - **Narrative explanations**   
                 - 📥 **Exports -**  
-                    - Download **data (CSV)**  
-                    - Download **charts**  
-                    - Download **signals**  
+                    - Download **Data table (CSV)**  
+                    - Download **Charts**   
                     - Download **CV summary**  
-                    - Download **narrative explanations**  
+                    
     
 
                 ### 💡 Pro Tips
