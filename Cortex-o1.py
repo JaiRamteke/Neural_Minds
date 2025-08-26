@@ -1660,6 +1660,17 @@ def main():
                 - 🔍 **Performance Metrics -** RMSE, MAE, R², CV results & predictability score  
                 - 🧩 **Explainable AI -** Global + Local model interpretation with plain-English narrative  
                 - 📥 **Smart Exports -** Downloadable reports for data, charts, signals & CV results  
+                        
+                ### 📊 Feature Set
+                The predictive models use a rich set of engineered features that capture both **price action** and **market behavior**:
+
+                - 📈 **Moving Averages:** 20-day & 50-day simple moving averages  
+                - 📊 **RSI (Relative Strength Index):** Measures overbought/oversold momentum  
+                - 🌐 **Volatility:** Rolling standard deviation of returns (risk measure)  
+                - ⚡ **Momentum:** Rate of change of prices to capture trends  
+                - ⏪ **Lag Features:** Shifted past values of price/returns (memory of past behavior)  
+                - 🔄 **Z-Scores:** Standardized deviations from rolling mean (mean reversion signal)  
+                - 📉 **Volume Analysis:** Raw & derived volume-based indicators for market activity
 
             """)
 
@@ -1698,6 +1709,30 @@ def main():
                     Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.NS)  
                             
                     """, unsafe_allow_html=True)
+                
+            with st.expander("🔄 Feature Pipeline (Cyclic View)"):
+                st.markdown("""
+                ```
+                    🔄 Continuous Prediction Cycle
+
+                📡 Data Fetching (yfinance / Alpha Vantage)
+                            ↓
+                    🛠️ Feature Engineering
+                (MA20, MA50, RSI, Volatility, Momentum, Lags, Z-Scores, Volume)
+                            ↓
+                    🤖 Model Training
+            (Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*)
+                            ↓
+                    🔮 Predictions & Signals
+            (Price / Returns | Neutral, Bullish, Bearish)
+                            ↓
+                    📊 Visualization & Exports
+                (Charts, CSV, Signals, CV Summary, Narratives)
+                            ↓
+                    🔁 New Market Data Arrives
+                            ↑
+                ```
+    """, unsafe_allow_html=True)
 
         with col2:
             st.markdown("""
@@ -1721,14 +1756,7 @@ def main():
                 - 📊 **Data Loaded Info -** Automatically shows **number of data points** fetched for the selected stock
                 - 🧠 **Models Supported -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
                 - 🔁 **Validation -** Walk-forward CV, Hold-out tests, Predictability scoring  
-                - 📊 **Indicators :**
-                        - **Moving Averages - 20-day, 50-day**
-                        - **RSI(Relative Strength Index)**
-                        - **Volatility(rolling standard deviation of returns)**
-                        - **Momentum(rate of change)**
-                        - **Lag Features(past price/returns shifted back in time)**
-                        - **Z-Scores(standardized values for mean reversion detection)**
-                        - **Volume Analysis**
+                - 📊 **Indicators -** Derived signals that capture market trends and behaviors
                 - 🚦 **Trading Signals -** Highlights model's latest signal (e.g., *Neutral*, *Mild Bullish*, *Mild Bearish*, *Strong Bullish*, *Strong Bearish*)  
                 - 📈 **Visualizations -** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
                 - ⚡ **Explainable AI -**  
