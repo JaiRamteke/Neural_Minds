@@ -1637,15 +1637,15 @@ def main():
             with tab1:
                 st.markdown("""
                 ### ✨ Premium Features
-                - 🔄 **Multi-API Integration** - Seamless fallback between yfinance & Alpha Vantage  
-                - 📡 **API Status Check** - Automatic health check before fetching  
-                - 🤖 **Advanced AI Models** - RF, GBM, Ridge, Lasso, XGBoost  
-                - 📊 **Comprehensive Analysis** - Technical indicators + diagnostics  
-                - 🎨 **Premium Interface** - Clean, responsive UI  
-                - 📈 **Real-time Charts** - Plotly OHLC, RSI, Volume  
-                - 🔍 **Performance Metrics** - RMSE, MAE, R², CV score  
-                - 🧩 **Explainable AI** - Global + Local interpretation  
-                - 📥 **Smart Exports** - Reports, charts, signals  
+                - 🔄 **Multi-API Integration -** Seamless fallback between yfinance & Alpha Vantage
+                - 📡 **API Status Check -** Automatic health check for data sources before fetching
+                - 🤖 **Advanced AI Models -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost  
+                - 📊 **Comprehensive Analysis -** Technical indicators + market diagnostics  
+                - 🎨 **Premium Interface -** Clean, responsive UI with interactive widgets  
+                - 📈 **Real-time Charts -** Plotly-powered OHLC, RSI, and Volume analysis  
+                - 🔍 **Performance Metrics -** RMSE, MAE, R², CV results & predictability score  
+                - 🧩 **Explainable AI -** Global + Local model interpretation with plain-English narrative  
+                - 📥 **Smart Exports -** Downloadable reports for data, charts, signals & CV results  
                 """)
 
             with tab2:
