@@ -1623,175 +1623,159 @@ def main():
         """, unsafe_allow_html=True)
 
     else:
-    # Welcome screen
+            # Welcome screen with reordered tabs
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+                "✨ Premium Features",
+                "🎯 How It Works",
+                "📊 Feature Set",
+                "🌍 Global Market Coverage",
+                "🛠️ Technical Features",
+                "🔮 AI Prediction Workflow",
+                "💡 Pro Tips"
+            ])
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("""
-                ### ✨ Premium Features
-                - 🔄 **Multi-API Integration -** Seamless fallback between yfinance & Alpha Vantage
-                - 📡 **API Status Check -** Automatic health check for data sources before fetching
-                - 🤖 **Advanced AI Models -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost  
-                - 📊 **Comprehensive Analysis -** Technical indicators + market diagnostics  
-                - 🎨 **Premium Interface -** Clean, responsive UI with interactive widgets  
-                - 📈 **Real-time Charts -** Plotly-powered OHLC, RSI, and Volume analysis  
-                - 🔍 **Performance Metrics -** RMSE, MAE, R², CV results & predictability score  
-                - 🧩 **Explainable AI -** Global + Local model interpretation with plain-English narrative  
-                - 📥 **Smart Exports -** Downloadable reports for data, charts, signals & CV results  
-                        
-                ### 📊 Feature Set
-                The predictive models use a rich set of engineered features that capture both **price action** and **market behavior**:
-
-                - 📈 **Moving Averages -** 20-day & 50-day simple moving averages  
-                - 📊 **RSI (Relative Strength Index) -** Measures overbought/oversold momentum  
-                - 🌐 **Volatility -** Rolling standard deviation of returns (risk measure)  
-                - ⚡ **Momentum -** Rate of change of prices to capture trends  
-                - ⏪ **Lag Features -** Shifted past values of price/returns (memory of past behavior)  
-                - 🔄 **Z-Scores -** Standardized deviations from rolling mean (mean reversion signal)  
-                - 📉 **Volume Analysis -** Raw & derived volume-based indicators for market activity
-
-            """)
-
-            with st.expander("🌍 Global Market Coverage"):
+            with tab1:
                 st.markdown("""
+                ### ✨ Premium Features
+                - 🔄 **Multi-API Integration** - Seamless fallback between yfinance & Alpha Vantage  
+                - 📡 **API Status Check** - Automatic health check before fetching  
+                - 🤖 **Advanced AI Models** - RF, GBM, Ridge, Lasso, XGBoost  
+                - 📊 **Comprehensive Analysis** - Technical indicators + diagnostics  
+                - 🎨 **Premium Interface** - Clean, responsive UI  
+                - 📈 **Real-time Charts** - Plotly OHLC, RSI, Volume  
+                - 🔍 **Performance Metrics** - RMSE, MAE, R², CV score  
+                - 🧩 **Explainable AI** - Global + Local interpretation  
+                - 📥 **Smart Exports** - Reports, charts, signals  
+                """)
+
+            with tab2:
+                st.markdown("""
+                ### 🎯 How It Works
+                1. 📡 Select Data Source (Yahoo / Alpha Vantage)  
+                2. ✅ API Health Check  
+                3. 🌍 Choose Market (US / India)  
+                4. 📊 Pick Stock  
+                5. ⏱️ Select Time Period (1m → 5y)  
+                6. 🧮 Configure Forecasting  
+                - Model, Target, CV Strategy, Tuning Iterations, Prediction Days  
+                7. 🤖 AI Learns Market Patterns  
+                8. 🔮 Forecast Returns / Prices  
+                9. 📈 Visualize & Explain (Charts + Signals + Narrative)
+                """)
+
+            with tab3:
+                st.markdown("""
+                ### 📊 Feature Set
+                Predictive models use engineered features that capture both price action & market behavior:
+                - 📈 Moving Averages (20d, 50d)  
+                - 📊 RSI Momentum  
+                - 🌐 Volatility (Rolling Std. Dev.)  
+                - ⚡ Momentum (Rate of Change)  
+                - ⏪ Lag Features  
+                - 🔄 Z-Scores (Mean Reversion)  
+                - 📉 Volume Analysis  
+                """)
+
+            with tab4:
+                    st.markdown("""
+                    ### 🌍 Global Market Coverage
+                    
                     ### 🇺🇸 US Stocks (41)
                     **Tech Giants:**  
                     Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL), Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA), Meta (META), Netflix (NFLX), Oracle (ORCL), Cisco (CSCO)  
+
                     **Finance & Asset Management:**  
                     JPMorgan (JPM), Goldman Sachs (GS), Morgan Stanley (MS), Citigroup (C), Bank of America (BAC),  
                     Visa (V), Mastercard (MA), BlackRock (BLK), State Street (STT), Northern Trust (NTRS),  
                     Berkshire Hathaway (BRK.B), Barclays (BCS), UBS (UBS), Deutsche Bank (DB)  
+
                     **Healthcare & Pharma:**  
                     Johnson & Johnson (JNJ), Pfizer (PFE), Merck (MRK), Eli Lilly (LLY), UnitedHealth (UNH)  
+
                     **Energy & Industrials:**  
                     ExxonMobil (XOM), Chevron (CVX), Boeing (BA), Lockheed Martin (LMT), Northrop Grumman (NOC), Ford (F), General Motors (GM)  
+
                     **Consumer & Retail:**  
                     Walmart (WMT), Procter & Gamble (PG), Coca-Cola (KO), PepsiCo (PEP), Disney (DIS)  
-                            
+
                     ---
 
                     ### 🇮🇳 Indian Stocks (34)
                     **Conglomerates & Energy:**  
                     Reliance (RELIANCE.NS), ONGC (ONGC.NS), Adani Enterprises (ADANIENT.NS), Adani Green (ADANIGREEN.NS), Adani Ports (ADANIPORTS.NS)  
+
                     **IT & Tech:**  
                     TCS (TCS.NS), Infosys (INFY.NS), Wipro (WIPRO.NS), Tech Mahindra (TECHM.NS), HCL Technologies (HCLTECH.NS)  
+
                     **Banking & Finance:**  
                     HDFC Bank (HDFCBANK.NS), ICICI Bank (ICICIBANK.NS), Kotak Bank (KOTAKBANK.NS), SBI (SBIN.NS), Axis Bank (AXISBANK.NS), Bajaj Finance (BAJFINANCE.NS)  
+
                     **Consumer & FMCG:**  
                     Hindustan Unilever (HINDUNILVR.NS), ITC (ITC.NS), Asian Paints (ASIANPAINT.NS), Nestle India (NESTLEIND.NS), Maruti Suzuki (MARUTI.NS)  
+
                     **Industrials & Materials:**  
                     Tata Motors (TATAMOTORS.NS), Mahindra & Mahindra (M&M.NS), Tata Steel (TATASTEEL.NS), JSW Steel (JSWSTEEL.NS), UltraTech Cement (ULTRACEMCO.NS)  
+
                     **Healthcare & Pharma:**  
                     Sun Pharma (SUNPHARMA.NS), Dr. Reddy's (DRREDDY.NS), Cipla (CIPLA.NS), Apollo Hospitals (APOLLOHOSP.NS)  
+
                     **Defense & Telecom:**  
                     Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.NS)  
-                            
-                    """, unsafe_allow_html=True)
-                
-            with st.expander("🔮 AI Prediction Workflow"):
+                    """)
+
+            with tab5:
                 st.markdown("""
-                ```
-                🔌 API Status Check  
-                └─ Yahoo Finance | Alpha Vantage  
-
-                        │
-                        ▼
-                📊 Data Loaded  
-                └─ # of Data Points Fetched  
-
-                        │
-                        ▼
-                🏦 Market Selection  
-                └─ 🇺🇸 US Stocks | 🇮🇳 Indian Stocks  
-
-                        │
-                        ▼
-                🤖 Machine Learning Models  
-                ├─ Random Forest | Gradient Boosting | Ridge | Lasso | XGBoost*  
-                ├─ CV Strategy → Walk-forward (5 folds) | Hold-out (20%)  
-                ├─ ⚡ Hyperparameter Tuning (1-50 iterations)  
-                └─ 📅 Prediction Horizon (1-30 days)  
-
-                        │
-                        ▼
-                🛠️ Feature Engineering  
-                ├─ 📈 Moving Averages (20d, 50d)  
-                ├─ 📊 RSI (Momentum Oscillator)  
-                ├─ 🌐 Volatility (Std. Dev. of Returns)  
-                ├─ ⚡ Momentum (Rate of Change)  
-                ├─ ⏪ Lag Features (t-1, t-2, …)  
-                ├─ 🔄 Z-Scores (Mean Reversion)  
-                └─ 📉 Volume Analysis  
-
-                        │
-                        ▼
-                🔮 Predictions & Signals  
-                ├─ 📊 Price Forecast | Return Forecast  
-                ├─ 🚦 Trading Signals → 🟢 Bullish | 🟡 Neutral | 🔴 Bearish  
-                └─ 📥 Exports → CSV | Charts | CV Summary |   
-
-                        │
-                        ▼
-                🧩 Explainability  
-                ├─ 🌍 Global → Feature Importance  
-                └─ 🎯 Local → SHAP Waterfall + 📝 Narrative Explaination
-                ```
-                """, unsafe_allow_html=True)
-
-        with col2:
-            st.markdown("""
-                ### 🎯 How It Works
-                1. 📡 **Select Data Source -** *Yahoo Finance (yfinance)* or *Alpha Vantage* 
-                2. ✅ **API Status Check -** System verifies if chosen API is healthy before fetching 
-                3. 🌍 **Select Market -** Choose **US Stocks** or **Indian Stocks**  
-                4. 📊 **Select Stock -** Pick from curated tickers or enter a custom symbol  
-                5. ⏱️ **Choose Time Period -** Analyze from **1 month → 5 years**  
-                6. 🧮 **Configure Forecasting -**  
-                        - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost)  
-                        - Choose **Target Type** → Return (%) or Price (level)  
-                        - Pick **CV Strategy** → Walk-forward (5 folds) / Hold-out (20%)  
-                        - Enable **Hyperparameter Tuning** (set iteration budget)  
-                        - Set **Days to Predict** (1 - 30)  
-                7. 🤖 **AI Analysis -** Models learn market patterns & indicators  
-                8. 🔮 **Predictions -** Forecast returns or prices with confidence  
-                9. 📈 **Visualize & Explain -** Interactive charts, validation results, signals, narrative explanations  
-
                 ### 🛠️ Technical Features
-                - 📊 **Data Loaded Info -** Automatically shows **number of data points** fetched for the selected stock
-                - 🧠 **Models Supported -** Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost*  
-                - 🔁 **Validation -** Walk-forward CV, Hold-out tests, Predictability scoring  
-                - 📊 **Indicators -** Derived signals that capture market trends and behaviors
-                - 🚦 **Trading Signals -** Highlights model's latest signal (e.g., *Neutral*, *Mild Bullish*, *Mild Bearish*, *Strong Bullish*, *Strong Bearish*)  
-                - 📈 **Visualizations -** Interactive OHLC & Volume charts, RSI Momentum, Feature Importance  
-                - ⚡ **Explainable AI -**  
-                        - **Global -** Permutation Importance  
-                        - **Local -** SHAP Waterfall & Narrative Explaination  
-                - 📥 **Exports -**  
-                        - Download - **Data table (CSV)**  
-                        - Download - **Charts**   
-                        - Download - **CV summary**  
-                    
-    
+                - 📊 Auto data load info (points fetched)  
+                - 🧠 Supported Models: RF, GBM, Ridge, Lasso, XGBoost  
+                - 🔁 Validation: Walk-forward CV, Hold-out  
+                - 📊 Indicators: Derived signals (momentum, volatility, etc.)  
+                - 🚦 Trading Signals: Bullish / Neutral / Bearish  
+                - 📈 Visualizations: OHLC, RSI, Feature Importance  
+                - ⚡ Explainable AI (Global + Local SHAP)  
+                - 📥 Exports: CSV, Charts, CV Summary  
+                """)
 
+            with tab6:
+                st.markdown("""
+                ### 🔮 AI Prediction Workflow
+                ```
+                🔌 API Status Check → Yahoo / Alpha Vantage
+                    ↓
+                📊 Data Loaded (# points fetched)
+                    ↓
+                🏦 Market Selection (US / India)
+                    ↓
+                🤖 ML Models (RF | GBM | Ridge | Lasso | XGB)
+                    ↓
+                🛠️ Feature Engineering (MA, RSI, Volatility, Lags...)
+                    ↓
+                🔮 Predictions & Trading Signals
+                    ↓
+                🧩 Explainability (Feature Importance + SHAP)
+                ```
+                """)
+
+            with tab7:
+                st.markdown("""
                 ### 💡 Pro Tips
-                - 📅 Use **longer timeframes (≥1y)** for more reliable training  
-                - 🌍 Always **consider global & economic context** along with technicals  
-                - ⏳ Compare **predictions across different horizons** (short vs long term)  
-                - 🧪 Test **both CV strategies** (Walk-forward & Hold-out) for robustness  
-                - ⚡ Increase **tuning iterations** (≥20) for stronger model performance  
-                - 🛡 Diversify portfolio: never rely on a single stock or sector  
-            """)
+                - 📅 Use ≥1 year timeframe for better training  
+                - 🌍 Factor in global/economic context  
+                - ⏳ Compare short vs long horizon predictions  
+                - 🧪 Test both CV strategies  
+                - ⚡ Run ≥20 tuning iterations  
+                - 🛡 Diversify portfolio across sectors  
+                """)
 
-        # 👇 Bottom full-width message
-        st.markdown(
-            """
-            ---
-            
-    👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
-            """,
-            unsafe_allow_html=True
-        )
+            # 👇 Bottom full-width message
+            st.markdown(
+                """
+                ---
+                👈 Use the **sidebar** to configure your settings and begin exploring the power of **AI-driven stock prediction!**
+                """,
+                unsafe_allow_html=True
+            )
+
 
 if __name__ == "__main__":
     main()
