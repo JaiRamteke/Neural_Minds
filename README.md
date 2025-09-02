@@ -1,4 +1,4 @@
-# Cortex-o1 (Neural Minds)
+# Neural Minds
   Advanced Market Analysis & AI-Powered Prediction Platform — Streamlit app for end-to-end stock exploration, model training, forecasting, and explainability.
 
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
