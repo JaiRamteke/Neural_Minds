@@ -118,7 +118,7 @@ streamlit run Cortex-o1.py
 ```
 or
 ```bash
-URL - (https://neuralminds-gwjl9asfu2xd8mqxjgysyy.streamlit.app/)
+https://neuralminds-gwjl9asfu2xd8mqxjgysyy.streamlit.app/
 ```
 
 ---
