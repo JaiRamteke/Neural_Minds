@@ -24,7 +24,7 @@ Neural Minds is a single‑file Streamlit application that lets you:
 - Explain predictions with global (permutation importance) and local (SHAP waterfall) interpretability.
 - Visualize candlesticks + indicators, backtests, and forward projections.
 
-Everything lives in **`Cortex-o1-updated-integrated.py`**.
+Everything lives in **`Cortex-o1.py`**.
 
 ---
 
