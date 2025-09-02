@@ -125,13 +125,10 @@ https://neuralminds-gwjl9asfu2xd8mqxjgysyy.streamlit.app/
 
 ##⚠️ Notes
 
-Short histories → weak predictions; rely on CV/backtest.
-
-Implemented horizon = 1 (iterative for multi-day).
-
-APIs may fail/rate-limit. yfinance is main source.
-
-Not financial advice.
+1. Short histories → weak predictions; rely on CV/backtest.
+2. Implemented horizon = 1 (iterative for multi-day).
+3. APIs may fail/rate-limit. yfinance is main source.
+4. Not financial advice.
 
 ---
 
