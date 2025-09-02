@@ -108,7 +108,9 @@ Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.
 
 ---
 
+
 ### 🔮 AI Prediction Workflow
+```bash
 🔌 API Status Check
 └─ Yahoo Finance | Alpha Vantage
     │
@@ -148,6 +150,8 @@ Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.
 ├─ 🌍 Global → Feature Importance
 └─ 🎯 Local → SHAP Waterfall + 📝 Narrative Explanation
 
+  ```
+
 ---
 
 ### 💡 Pro Tips
@@ -157,7 +161,6 @@ Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.
 - 🧪 Try **both CV strategies** for robustness  
 - ⚡ Run ≥20 tuning iterations for stronger models  
 - 🛡 Diversify: never rely on one stock or sector
-
 
 
 ---
