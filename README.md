@@ -124,9 +124,13 @@ https://neuralminds-gwjl9asfu2xd8mqxjgysyy.streamlit.app/
 ---
 
 ##⚠️ Notes
+
 Short histories → weak predictions; rely on CV/backtest.
+
 Implemented horizon = 1 (iterative for multi-day).
+
 APIs may fail/rate-limit. yfinance is main source.
+
 Not financial advice.
 
 ---
