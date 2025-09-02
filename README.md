@@ -13,7 +13,7 @@
 
 
 ## ✨ What this app does
-Cortex‑o1 is a single‑file Streamlit application that lets you:
+Neural Minds is a single‑file Streamlit application that lets you:
 
 - Pull historical price/volume data for US and Indian tickers.
 - Enrich it with practical technical features (MA_20/50, RSI, returns, volatility, momentum, z‑scores, volume MA, and price/return lags).
