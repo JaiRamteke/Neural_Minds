@@ -62,6 +62,7 @@ Targets are aligned to **future values** (`shift(-horizon)`)
 
 ### 🌍 Global Market Coverage
 
+```bash
 #### 🇺🇸 US Stocks (41)
 **Tech Giants:**  
 Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL), Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA), Meta (META), Netflix (NFLX), Oracle (ORCL), Cisco (CSCO)  
@@ -75,9 +76,11 @@ Johnson & Johnson (JNJ), Pfizer (PFE), Merck (MRK), Eli Lilly (LLY), UnitedHealt
 ExxonMobil (XOM), Chevron (CVX), Boeing (BA), Lockheed Martin (LMT), Northrop Grumman (NOC), Ford (F), General Motors (GM)  
 **Consumer & Retail:**  
 Walmart (WMT), Procter & Gamble (PG), Coca-Cola (KO), PepsiCo (PEP), Disney (DIS)  
+  ```
 
 ---
 
+```bash
 #### 🇮🇳 Indian Stocks (34)
 **Conglomerates & Energy:**  
 Reliance (RELIANCE.NS), ONGC (ONGC.NS), Adani Enterprises (ADANIENT.NS), Adani Green (ADANIGREEN.NS), Adani Ports (ADANIPORTS.NS)  
@@ -93,6 +96,7 @@ Tata Motors (TATAMOTORS.NS), Mahindra & Mahindra (M&M.NS), Tata Steel (TATASTEEL
 Sun Pharma (SUNPHARMA.NS), Dr. Reddy's (DRREDDY.NS), Cipla (CIPLA.NS), Apollo Hospitals (APOLLOHOSP.NS)  
 **Defense & Telecom:**  
 Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.NS)  
+  ```
 
 ---
 
