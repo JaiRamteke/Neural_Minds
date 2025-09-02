@@ -75,12 +75,13 @@ Targets are aligned to **future values** (`shift(-horizon)`).
 ---
 
 ## 🧭 UI
-The app has 5 tabs:
+The app has 6 tabs:
 1. **Stock Analysis** — profile, stats, candlestick + indicators  
 2. **Predictions** — features, CV table, backtest, forecast block  
 3. **Charts** — forward projection, RSI view  
 4. **Model Performance** — model summary, feature list, CV means  
-5. **Data Table** — processed dataset view/export  
+5. **Data Table** — processed dataset view/export
+6. **Explainable AI** - **Global** - Permutation Importance and **Local** - SHAP Waterfall & Narrative Explaination
 
 ---
 
@@ -115,15 +116,18 @@ Market cap and some metadata rely on this key; price history typically comes fro
 ```bash
 streamlit run Cortex-o1.py
 ```
-Then open the local URL printed by Streamlit.
+or
+```bash
+URL - (https://neuralminds-gwjl9asfu2xd8mqxjgysyy.streamlit.app/)
+```
 
 ---
 
-## ⚠️ Notes & limitations
-- Short histories and near‑zero autocorrelation reduce predictive power; trust CV/backtest metrics.
-- 1‑day horizon is implemented end‑to‑end. Extending to multi‑step forecasting would require minor changes to feature alignment and plotting.
-- Financial data can be messy; if APIs are down or rate‑limited, some metadata (e.g., market cap) may be unavailable.
-- **Not financial advice** — use responsibly.
+##⚠️ Notes
+Short histories → weak predictions; rely on CV/backtest.
+Implemented horizon = 1 (iterative for multi-day).
+APIs may fail/rate-limit. yfinance is main source.
+Not financial advice.
 
 ---
 
