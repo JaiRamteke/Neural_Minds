@@ -123,7 +123,7 @@ https://neuralminds-gwjl9asfu2xd8mqxjgysyy.streamlit.app/
 
 ---
 
-##⚠️ Notes
+## ⚠️ Notes
 
 1. Short histories → weak predictions; rely on CV/backtest.
 2. Implemented horizon = 1 (iterative for multi-day).
