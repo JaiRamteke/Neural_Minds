@@ -298,7 +298,7 @@ def get_market_cap(ticker: str, source: str = "yfinance", currency: str = "USD")
             except Exception:
                 pass
 
-        return _format_money(mc, currency)
+        return get_market_cap(map_ticker_for_source(ticker, "yfinance"), currency)
 
     except Exception:
         return "N/A"
