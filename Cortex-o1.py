@@ -1683,7 +1683,7 @@ def main():
                     st.markdown("""
                     ### 🇺🇸 US Stocks (41)
                     **Tech Giants:**  
-                    Apple (AAPL), Microsoft (MSFT), Alphabet/Google (GOOGL), Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA), Meta (META), Netflix (NFLX), Oracle (ORCL), Cisco (CSCO)  
+                    Apple (AAPL), ASML Holding N.V (ASML), Microsoft (MSFT), Alphabet/Google (GOOGL), Amazon (AMZN), Tesla (TSLA), NVIDIA (NVDA), Meta (META), Netflix (NFLX), Oracle (ORCL), Cisco (CSCO)  
                     **Finance & Asset Management:**  
                     JPMorgan (JPM), Goldman Sachs (GS), Morgan Stanley (MS), Citigroup (C), Bank of America (BAC),  
                     Visa (V), Mastercard (MA), BlackRock (BLK), State Street (STT), Northern Trust (NTRS),  
