@@ -54,7 +54,40 @@ AV_BASE_URL = 'https://www.alphavantage.co/query'
 # Page config
 st.set_page_config(page_title="Neural Minds", page_icon="brain.png", layout="wide", initial_sidebar_state="expanded")
 
-
+# ---------------------
+# UI CSS (keep your look & feel)
+# ---------------------
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        .main-header { font-size: 3.5rem; font-weight: 700; background: linear-gradient(45deg, #1f77b4, #ff7f0e);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            text-align: center; margin-bottom: 1rem; font-family: 'Inter', sans-serif; }
+        .subtitle { text-align: center; font-size: 1.3rem; color: #666; margin-bottom: 3rem; font-weight: 300; }
+        .warning-card { background: #000000; padding: 1.5rem; border-radius: 8px; border: 1px solid #ffeaa7;
+            margin-top: 2rem; border-left: 4px solid #fdcb6e; }
+        .api-status { padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        .api-working { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .api-failed { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .stButton > button { background: linear-gradient(45deg, #1f77b4, #ff7f0e); color: white; border: none;
+            padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 1rem; transition: all 0.3s ease; width: 100%; }
+        .stButton > button:hover { background: linear-gradient(45deg, #1565c0, #f57c00); transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        section[data-testid="stSidebar"] { background:#f9f9f9 !important; color:#000 !important; }
+        section[data-testid="stSidebar"] * { color:#000 !important; fill:#000 !important; }
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
+        section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div{
+            background:#ffffff !important; border:1px solid #ddd !important; border-radius:8px !important; }
+        div[role="listbox"], ul[role="listbox"]{ background:#ffffff !important; color:#000000 !important;
+            border:1px solid #ddd !important; border-radius:8px !important; }
+        li[role="option"]{ color:#000 !important; }
+        li[role="option"][aria-selected="true"], li[role="option"]:hover{ background:#f0f0f0 !important; }
+        section[data-testid="stSidebar"] .stTextInput > div > div,
+        section[data-testid="stSidebar"] .stNumberInput > div > div,
+        section[data-testid="stSidebar"] .stDateInput > div > div{
+            background:#ffffff !important; border:1px solid #ddd !important; border-radius:8px !important; }
+    </style>
+""", unsafe_allow_html=True)
 
 # ---------------------
 # Stock dictionaries 
