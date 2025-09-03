@@ -1,3 +1,6 @@
+# Neural Minds
+  Advanced Market Analysis & AI-Powered Prediction Platform — Streamlit app for end-to-end stock exploration, model training, forecasting, and explainability.
+
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 [![SHAP](https://img.shields.io/badge/SHAP-Explainability-8A2BE2)](https://github.com/shap/shap)
@@ -7,9 +10,6 @@
 [![Alpha Vantage](https://img.shields.io/badge/Alpha%20Vantage-API-0066CC)](https://www.alphavantage.co/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active-success)](#)
-
-### Neural Minds
-  Advanced Market Analysis & AI-Powered Prediction Platform — Streamlit app for end-to-end stock exploration, model training, forecasting, and explainability.
 
 
 ### ✨ Premium Features
