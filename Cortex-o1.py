@@ -214,75 +214,78 @@ def map_ticker_for_source(ticker: str, source: str) -> str:
     base = ticker.split('.')[0].upper()
 
     if source.lower() == "yfinance":
-        # yfinance expects .NS for Indian stocks
-        return f"{base}.NS" if ticker.endswith(".NSE") or ticker.endswith(".NS") else base
+        # Prefer NSE first, then BSE, else raw
+        for suffix in (".NS", ".BO", ""):
+            candidate = base + suffix
+            try:
+                hist = yf.Ticker(candidate).history(period="5d")
+                if not hist.empty:
+                    return candidate
+            except Exception:
+                continue
+        return base + ".NS"
 
     elif source.lower() in ["alpha_vantage", "alphavantage"]:
-        # Alpha Vantage (limited) supports some Indian tickers as .BSE
-        return f"{base}.BSE" if ticker.endswith(".NSE") or ticker.endswith(".NS") else base
+        # Alpha Vantage (limited) uses .BSE for Indian tickers
+        return f"{base}.BSE" if ticker.endswith((".NSE", ".NS")) else base
 
     return ticker.upper()
+
+
+def _format_money(val, currency: str) -> str:
+    if not val:
+        return "N/A"
+    symbols = {"USD": "$", "INR": "₹", "EUR": "€", "GBP": "£", "JPY": "¥"}
+    sym = symbols.get(currency.upper(), "")
+    return f"{sym}{val:,.0f}"
+
 
 def get_market_cap(ticker: str, source: str = "yfinance", currency: str = "USD") -> str:
     try:
         mapped_ticker = map_ticker_for_source(ticker, source)
-
         mc = None
+
         if source.lower() == "yfinance":
             t = yf.Ticker(mapped_ticker)
 
-            # 1) fast_info (most reliable for NSE)
+            # 1) fast_info
             try:
                 fi = t.fast_info
-                # fast_info can be a dict-like or object depending on yfinance version
-                mc = getattr(fi, "market_cap", None)
-                if mc is None and isinstance(fi, dict):
-                    mc = fi.get("market_cap")
+                mc = getattr(fi, "market_cap", None) or (fi.get("market_cap") if isinstance(fi, dict) else None)
             except Exception:
-                mc = None
+                pass
 
-            # 2) new-style get_info()
+            # 2) get_info()
             if not mc:
                 try:
                     info = t.get_info()
-                    if isinstance(info, dict):
-                        mc = info.get("marketCap")
+                    mc = info.get("marketCap") if isinstance(info, dict) else None
                 except Exception:
-                    mc = None
+                    pass
 
-            # 3) Compute fallback = price × shares
+            # 3) price × shares fallback
             if not mc:
-                price = None
-                shares = None
                 try:
-                    # try fast_info first
+                    fi = t.fast_info
                     price = (getattr(fi, "last_price", None) or
                              (fi.get("last_price") if isinstance(fi, dict) else None) or
                              getattr(fi, "regular_market_price", None) or
                              (fi.get("regular_market_price") if isinstance(fi, dict) else None))
-                except Exception:
-                    pass
-                if not price:
-                    try:
+                    if not price:
                         hist = t.history(period="1d")
-                        if not hist.empty:
-                            price = float(hist["Close"].iloc[-1])
-                    except Exception:
-                        pass
-                try:
-                    # shares can be in fast_info or info
+                        price = float(hist["Close"].iloc[-1]) if not hist.empty else None
+
                     shares = (getattr(fi, "shares", None) if fi else None)
                     if shares is None and isinstance(fi, dict):
                         shares = fi.get("shares")
                     if not shares:
                         info2 = t.get_info()
-                        if isinstance(info2, dict):
-                            shares = info2.get("sharesOutstanding")
+                        shares = info2.get("sharesOutstanding") if isinstance(info2, dict) else None
+
+                    if price and shares:
+                        mc = float(price) * float(shares)
                 except Exception:
                     pass
-
-                if price and shares:
-                    mc = float(price) * float(shares)
 
         elif source.lower() in ["alpha_vantage", "alphavantage"]:
             url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={mapped_ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
@@ -291,19 +294,11 @@ def get_market_cap(ticker: str, source: str = "yfinance", currency: str = "USD")
                 if r.status_code == 200:
                     data = r.json()
                     av_mc = data.get("MarketCapitalization")
-                    if av_mc and str(av_mc).isdigit():
-                        mc = int(av_mc)
+                    mc = int(av_mc) if av_mc and str(av_mc).isdigit() else None
             except Exception:
                 pass
-            # optional: no recursive fallback here to avoid rate limits / loops
 
-        if not mc:
-            return "N/A"
-
-        # Currency-aware formatting
-        symbols = {"USD": "$", "INR": "₹", "EUR": "€", "GBP": "£", "JPY": "¥"}
-        sym = symbols.get((currency or "USD").upper(), "")
-        return f"{sym}{mc:,.0f}"
+        return _format_money(mc, currency)
 
     except Exception:
         return "N/A"
@@ -1808,3 +1803,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
