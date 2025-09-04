@@ -211,7 +211,7 @@ def select_model(model_name, return_param_grid=False):
         return model, param_grid
     return model
 
-def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=15):
+def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10):
     models = get_model_space()  # dict: name -> (estimator, param_grid)
 
     if model_name not in models:
