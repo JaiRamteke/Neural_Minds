@@ -257,18 +257,20 @@ def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10, targe
     mean_mae = cv_table["MAE"].mean()
     mean_r2 = cv_table["R²"].mean()
 
-    # --- optional tuning (RandomizedSearch) ---
+    # --- optional tuning ---
+    final_pipe = pipe
     if do_tune and param_grid:
-        from sklearn.model_selection import RandomizedSearchCV
+        # prefix param names with "model__"
+        tuned_params = {f"model__{k}": v for k, v in param_grid.items()}
         search = RandomizedSearchCV(
-            pipe, param_grid, n_iter=tune_iter,
+            pipe, tuned_params, n_iter=tune_iter,
             scoring="neg_root_mean_squared_error",
-            n_jobs=-1, cv=3, random_state=42
+            n_jobs=-1, cv=tscv, random_state=42
         )
         search.fit(X, y)
         final_pipe = search.best_estimator_
     else:
-        final_pipe = pipe.fit(X, y)
+        final_pipe.fit(X, y)
 
     return final_pipe, cv_table, mean_rmse, mean_mae, mean_r2
 
