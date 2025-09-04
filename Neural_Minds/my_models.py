@@ -87,78 +87,85 @@ def prepare_supervised(df, horizon=1, target_type="return"):
 # Model training, CV, selection
 # ---------------------
 def get_model_space(return_param_grids=False):
-    """Return dictionary mapping model names → (estimator, param_grid)."""
+    models = {}
+    param_grids = {}
 
-    models = {
-        # 🌲 Random Forest
-        "Random Forest": (
-            RandomForestRegressor(random_state=42, n_jobs=-1),
-            {
-                "n_estimators": [100, 200, 300],
-                "max_depth": [3, 5, 10, None],
-                "min_samples_split": [2, 5, 10],
-                "min_samples_leaf": [1, 2, 5],
-                "max_features": ["sqrt", "log2", None],
-            }
-        ),
-
-        # 🌱 Gradient Boosting
-        "Gradient Boosting": (
-            GradientBoostingRegressor(random_state=42),
-            {
-                "n_estimators": [100, 200, 300],
-                "learning_rate": [0.01, 0.05, 0.1],
-                "max_depth": [2, 3, 5, 7],
-                "min_samples_split": [2, 5, 10],
-                "min_samples_leaf": [1, 5, 10],
-                "subsample": [0.7, 0.9, 1.0],
-            }
-        ),
-
-        # 🔗 Linear Models
-        "Ridge": (
-            Ridge(random_state=42),
-            {
-                "alpha": [0.01, 0.1, 1.0, 10.0, 100.0],
-            }
-        ),
-
-        "Lasso": (
-            Lasso(random_state=42, max_iter=5000),
-            {
-                "alpha": [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0],
-            }
-        ),
+    # 🌲 Random Forest
+    models["Random Forest"] = RandomForestRegressor(
+        n_estimators=100,
+        max_depth=6,
+        min_samples_leaf=5,
+        random_state=42,
+        n_jobs=1
+    )
+    param_grids["Random Forest"] = {
+        "n_estimators": [100, 200, 300],
+        "max_depth": [3, 5, 6],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [1, 5, 10],
+        "max_features": ["sqrt", 0.8],
+        "bootstrap": [True, False]
     }
 
-    # 🔥 XGBoost (optional)
+    # 🌱 Gradient Boosting
+    models["Gradient Boosting"] = GradientBoostingRegressor(
+        n_estimators=200,
+        learning_rate=0.05,
+        max_depth=3,
+        min_samples_leaf=10,
+        subsample=0.8,
+        random_state=42
+    )
+    param_grids["Gradient Boosting"] = {
+        "n_estimators": [100, 200, 300],
+        "learning_rate": [0.01, 0.05, 0.1],
+        "max_depth": [2, 3, 4],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [5, 10, 20],
+        "subsample": [0.7, 0.8, 0.9]
+    }
+
+    # 🔗 Linear models
+    models["Ridge"] = Ridge(alpha=1.0, random_state=42)
+    param_grids["Ridge"] = {"alpha": [0.1, 1.0, 10.0]}
+
+    models["Lasso"] = Lasso(alpha=0.001, random_state=42)
+    param_grids["Lasso"] = {"alpha": [0.0001, 0.001, 0.01]}
+
+    # 🔥 XGBoost (always visible, friendly error if not installed)
     try:
-        models["XGBoost"] = (
-            XGBRegressor(
-                random_state=42,
-                eval_metric="rmse",
-                use_label_encoder=False,
-                n_jobs=-1,
-            ),
-            {
-                "n_estimators": [100, 200, 300, 500],
-                "learning_rate": [0.01, 0.05, 0.1],
-                "max_depth": [3, 5, 7, 9],
-                "subsample": [0.7, 0.9, 1.0],
-                "colsample_bytree": [0.7, 0.9, 1.0],
-                "reg_lambda": [0.5, 1.0, 2.0],
-                "reg_alpha": [0.0, 0.1, 0.5],
-                "min_child_weight": [1, 3, 5],
-            }
+        if not XGB_AVAILABLE:
+            raise ImportError("XGBoost is not installed. Install it with `pip install xgboost` to use this model.")
+        models["XGBoost"] = XGBRegressor(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=3,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_lambda=1.0,
+            reg_alpha=0.1,
+            min_child_weight=5,
+            random_state=42,
+            n_jobs=1
         )
-    except ImportError:
-        pass
+        param_grids["XGBoost"] = {
+            "n_estimators": [200, 300, 400],
+            "learning_rate": [0.01, 0.05, 0.1],
+            "max_depth": [2, 3, 4],
+            "subsample": [0.7, 0.8, 0.9],
+            "colsample_bytree": [0.7, 0.8, 0.9],
+            "reg_lambda": [0.5, 1.0, 2.0],
+            "reg_alpha": [0.0, 0.1, 0.5],
+            "min_child_weight": [1, 3, 5]
+        }
+    except ImportError as e:
+        models["XGBoost"] = None
+        param_grids["XGBoost"] = None
+        print(f"⚠️ {e}")
 
     if return_param_grids:
-        param_grids = {name: grid for name, (_, grid) in models.items()}
-        return {name: model for name, (model, _) in models.items()}, param_grids
-    else:
-        return models
+        return models, param_grids
+    return models
 
 def make_pipeline(estimator):
     return Pipeline([
@@ -211,50 +218,57 @@ def select_model(model_name, return_param_grid=False):
         return model, param_grid
     return model
 
-def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10):
-    models = get_model_space()  # dict: name -> (estimator, param_grid)
-
-    if model_name not in models:
+def train_model(X, y, model_name, n_splits=5, do_tune=False, tune_iter=10, target_type="return"):
+    # --- get the chosen model ---
+    space = get_model_space()
+    if model_name not in space:
         raise ValueError(f"Model {model_name} not found in model space.")
 
-    base_model, param_grid = models[model_name]
+    model_obj = space[model_name]
+    if isinstance(model_obj, tuple):
+        base_model, param_grid = model_obj
+    else:
+        base_model, param_grid = model_obj, None
 
     pipe = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
+        ("imputer", SimpleImputer()),
         ("scaler", StandardScaler()),
         ("model", base_model)
     ])
 
+    # --- CV evaluation ---
     tscv = TimeSeriesSplit(n_splits=n_splits)
-
-    # --- CV metrics ---
     fold_metrics = []
+
     for fold, (train_idx, test_idx) in enumerate(tscv.split(X), 1):
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
         pipe.fit(X_train, y_train)
         preds = pipe.predict(X_test)
+
         rmse = mean_squared_error(y_test, preds, squared=False)
         mae = mean_absolute_error(y_test, preds)
         r2 = r2_score(y_test, preds)
         fold_metrics.append((fold, rmse, mae, r2))
 
     cv_table = pd.DataFrame(fold_metrics, columns=["Fold", "RMSE", "MAE", "R²"])
-    mean_rmse, mean_mae, mean_r2 = cv_table[["RMSE", "MAE", "R²"]].mean()
+    mean_rmse = cv_table["RMSE"].mean()
+    mean_mae = cv_table["MAE"].mean()
+    mean_r2 = cv_table["R²"].mean()
 
-    # --- optional tuning ---
-    final_pipe = pipe
+    # --- optional tuning (RandomizedSearch) ---
     if do_tune and param_grid:
-        tuned_params = {f"model__{k}": v for k, v in param_grid.items()}
+        from sklearn.model_selection import RandomizedSearchCV
         search = RandomizedSearchCV(
-            pipe, tuned_params, n_iter=tune_iter,
+            pipe, param_grid, n_iter=tune_iter,
             scoring="neg_root_mean_squared_error",
-            n_jobs=-1, cv=tscv, random_state=42
+            n_jobs=-1, cv=3, random_state=42
         )
         search.fit(X, y)
         final_pipe = search.best_estimator_
     else:
-        final_pipe.fit(X, y)
+        final_pipe = pipe.fit(X, y)
 
     return final_pipe, cv_table, mean_rmse, mean_mae, mean_r2
 
