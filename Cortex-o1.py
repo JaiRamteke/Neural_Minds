@@ -8,9 +8,9 @@ import requests
 import time
 import matplotlib.pyplot as plt
 import warnings
-from datafetching import test_api_connections, stock_selection_ui,  fetch_stock_data_yfinance, fetch_stock_data_unified, load_stock_data_auto, create_sample_data, get_stock_info
-from feature_processing import data_diagnostics, process_stock_data, iterative_forecast, safe_stat, render_explainable_ai_tab
-from my_models import get_model_space, select_model, prepare_supervised, time_series_cv_score, backtest_holdout
+from Neural_Minds.datafetching import test_api_connections, stock_selection_ui,  fetch_stock_data_yfinance, fetch_stock_data_unified, load_stock_data_auto, create_sample_data, get_stock_info
+from Neural_Minds.feature_processing import data_diagnostics, process_stock_data, iterative_forecast, safe_stat, render_explainable_ai_tab
+from Neural_Minds.my_models import get_model_space, select_model, prepare_supervised, time_series_cv_score, backtest_holdout
 
 warnings.filterwarnings('ignore')
 
@@ -804,3 +804,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
