@@ -400,7 +400,7 @@ def main():
             st.plotly_chart(fig_bt, use_container_width=True)
 
             # One‑step ahead
-            st.markdown("### 🔮 Next Day Prediction")
+            st.markdown("### 🔮 Predictions")
             # Use last row features
             X_all, _, _ = prepare_supervised(df, horizon=1, target_type=st.session_state["target_type"])
             last_row = X_all.iloc[[-1]]
@@ -412,8 +412,8 @@ def main():
                 pct = (delta/current_price_num)*100.0 if current_price_num!=0 else 0.0
                 c1,c2,c3 = st.columns(3)
                 c1.metric("Current Price", f"{currency_symbol}{current_price_num:.2f}")
-                c2.metric("Predicted Return (1d)", f"{y_hat:.2f}%")
-                c3.metric("Predicted Price (1d)", f"{currency_symbol}{next_price:.2f}", f"{currency_symbol}{delta:.2f}")
+                c2.metric("Predicted Return", f"{y_hat:.2f}%")
+                c3.metric("Predicted Price", f"{currency_symbol}{next_price:.2f}", f"{currency_symbol}{delta:.2f}")
 
                 # Prediction confidence
                 if pct is not None:
@@ -804,4 +804,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
