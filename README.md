@@ -267,7 +267,7 @@ Optional dependencies — SHAP and XGBoost are optional. SHAP explanations may b
 
 ---
 
-**Contributing / Extending**
+## Contributing / Extending
 
 Add more models (e.g., LSTM/Transformer models) and Bayesian Optimization 
 Cloud-scale deployment and expose a REST API for scheduled retraining and production inference.
