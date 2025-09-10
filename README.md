@@ -27,21 +27,27 @@
 
 ---
 
-### 🎯 How It Works
-1. 📡 **Select Data Source -** *Yahoo Finance (yfinance)* or *Alpha Vantage*  
-2. ✅ **API Status Check -** System verifies if chosen API is healthy before fetching  
-3. 🌍 **Select Market -** Choose **US Stocks** or **Indian Stocks**  
-4. 📊 **Select Stock -** Pick from curated tickers or enter a custom symbol  
-5. ⏱️ **Choose Time Period -** Analyze from **1 month → 5 years**  
-6. 🧮 **Configure Forecasting -**  
-   - Select **Model** (Random Forest, Gradient Boosting, Ridge, Lasso, XGBoost)  
-   - Choose **Target Type** → Return (%) or Price (level)  
-   - Pick **CV Strategy** → Walk-forward (5 folds) / Hold-out (20%)  
-   - Enable **Hyperparameter Tuning** (set iteration budget)  
-   - Set **Days to Predict** (1-30)  
-7. 🤖 **AI Analysis -** Models learn market patterns & indicators  
-8. 🔮 **Predictions -** Forecast returns or prices with confidence  
-9. 📈 **Visualize & Explain -** Interactive charts, validation results, signals, narrative explanations  
+```bash
+Neural_minds/
+├── Cortex-o1.py                        # 🎯 Main Streamlit app entry point
+└── Neural_Minds/
+    ├── data/
+    │   ├── __init__.py
+    │   └── datafetching.py           # 📡 Fetch stock data, API connections, sample data
+    ├── features/
+    │   ├── __init__.py
+    │   └── feature_processing.py     # ⚙️ Feature engineering, diagnostics, forecasting utils
+    ├── models/
+    │   ├── __init__.py
+    │   └── my_models.py              # 🤖 ML models, pipelines, training, CV
+    ├── utils/
+    │   ├── __init__.py
+    │   └── helpers.py                # 🛠️ (optional) Common functions, formatting, error handling
+├── assets/
+│   └── brain.png                 # 🧠 App favicon/logo
+├── requirements.txt              # 📦 Dependencies (streamlit, yfinance, scikit-learn, xgboost, plotly, etc.)
+└── README.md                     # 📖 Documentation
+  ```
 
 ---
 
@@ -156,34 +162,27 @@ Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.
 
   ```
 
----
-
-### 💡 Pro Tips
-- 📅 Use **longer timeframes (≥1y)** for more reliable training  
-- 🌍 Always **consider macro & global context** with technicals  
-- ⏳ Compare **short vs long horizon forecasts**  
-- 🧪 Try **both CV strategies** for robustness  
-- ⚡ Run ≥20 tuning iterations for stronger models  
-- 🛡 Diversify: never rely on one stock or sector
-
 
 ---
 
 ## 🧱 Architecture
-- **Data**  
-  Fetch OHLCV via yfinance → Alpha Vantage → sample generator. Market metadata: sector, industry, currency, market cap.
-- **Features**  
-  Rolling indicators, RSI, pct/log returns, rolling vol, z-score, lags of price & returns.
-- **Targets**  
-  `return` (next-day %) or `price` (next-day level).
-- **Models**  
-  RF, GBM, Ridge, Lasso, optional XGBoost. Parameter grids for randomized tuning.
-- **Evaluation**  
-  Walk-forward CV (`TimeSeriesSplit`) and last-20% hold-out backtest.
-- **Forecasting**  
-  Iterative multi-day business-calendar forecasts with return compounding.
-- **Explainability**  
-  Global (permutation importance) + Local (SHAP) feature contributions.
+
+Data layer
+fetch_stock_data_yfinance(ticker, period) — uses yfinance to download OHLCV and normalizes output. 
+fetch_stock_data_unified(ticker, period) — uses Alpha Vantage TIME_SERIES_DAILY and converts JSON to DataFrame. 
+load_stock_data_auto(ticker, period) — tries yfinance → Alpha Vantage → create_sample_data(...) fallback. 
+Feature engineering
+process_stock_data(...) — cleans columns, enforces OHLCV, computes MA_20/50, RSI, volatilities, mom, lag features, forward returns, and drops NA. 
+calculate_rsi(...) — RSI helper function. 
+Supervised dataset
+prepare_supervised(df, horizon, target_type) — builds X and y aligned with next-day return or level. 
+Modeling & evaluation
+get_model_space() — returns model objects + parameter grids. 
+time_series_cv_score(...), train_model(...), backtest_holdout(...) — evaluation, CV scoring, optional RandomizedSearch tuning, and hold-out backtests.
+Explainability
+render_explainable_ai_tab(final_pipe, df) — computes permutation importances and SHAP local explanations (with waterfall plot + narrative). Falls back when SHAP or model type is unsupported.
+UI
+main() — Streamlit layout, sidebar controls, tabs, API status checker and orchestrates the workflows.
 
 ---
 
@@ -268,6 +267,15 @@ Cortex-o1.py  # Streamlit app, features, models, plots, explainability
 
 ---
 
+**Limitations & important notes**
+
+Not financial advice — The app includes an explicit disclaimer and is intended for educational/research use only. Do not use predictions as sole investment guidance. 
+Rate limits — Alpha Vantage applies strict API rate limits; heavy automated use will hit limits and return messages which the app surfaces. 
+Data quality & small samples — If history is short (<120 rows) models can be unstable; the app computes a predictability score and warns users when data is insufficient. 
+Optional dependencies — SHAP and XGBoost are optional. SHAP explanations may be slow on large datasets; the app samples observations to speed up SHAP.
+
+---
+
 ## ✅ Checklist to reproduce a forecast
 1. Install requirements and set the Alpha Vantage key (optional).
 2. `streamlit run Cortex-o1.py`
@@ -275,6 +283,15 @@ Cortex-o1.py  # Streamlit app, features, models, plots, explainability
 4. Pick a model and CV strategy; run the **Predictions** tab.
 5. Inspect CV table, hold‑out backtest, and the one‑step forecast.
 6. Open **Explainable AI** to review feature importance and the SHAP waterfall.
+
+---
+
+**Contributing / Extending**
+
+Add more models (e.g., LSTM/Transformer models) and Bayesian Optimization 
+Cloud-scale deployment and expose a REST API for scheduled retraining and production inference.
+Sentiment & alternative data via a daily scraper e.g. NewsAPI with text embedding sentiment pipeline.
+Implement transaction cost aware backtest with bid ask spread and slippage.
 
 ---
 
