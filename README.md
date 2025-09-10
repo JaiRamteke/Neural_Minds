@@ -27,6 +27,7 @@
 
 ---
 
+## 🧱 Architecture
 ```bash
 Neural_minds/
 ├── Cortex-o1.py                        # 🎯 Main Streamlit app entry point
@@ -165,26 +166,6 @@ Paras Defence (PARAS.NS), HAL (HAL.NS), BEL (BEL.NS), Bharti Airtel (BHARTIARTL.
 
 ---
 
-## 🧱 Architecture
-
-Data layer
-fetch_stock_data_yfinance(ticker, period) — uses yfinance to download OHLCV and normalizes output. 
-fetch_stock_data_unified(ticker, period) — uses Alpha Vantage TIME_SERIES_DAILY and converts JSON to DataFrame. 
-load_stock_data_auto(ticker, period) — tries yfinance → Alpha Vantage → create_sample_data(...) fallback. 
-Feature engineering
-process_stock_data(...) — cleans columns, enforces OHLCV, computes MA_20/50, RSI, volatilities, mom, lag features, forward returns, and drops NA. 
-calculate_rsi(...) — RSI helper function. 
-Supervised dataset
-prepare_supervised(df, horizon, target_type) — builds X and y aligned with next-day return or level. 
-Modeling & evaluation
-get_model_space() — returns model objects + parameter grids. 
-time_series_cv_score(...), train_model(...), backtest_holdout(...) — evaluation, CV scoring, optional RandomizedSearch tuning, and hold-out backtests.
-Explainability
-render_explainable_ai_tab(final_pipe, df) — computes permutation importances and SHAP local explanations (with waterfall plot + narrative). Falls back when SHAP or model type is unsupported.
-UI
-main() — Streamlit layout, sidebar controls, tabs, API status checker and orchestrates the workflows.
-
----
 
 ## 🤖 Modeling
 - **Pipeline**: `SimpleImputer → StandardScaler → Model`
