@@ -1,4 +1,4 @@
-# Neural Minds
+# Neural Minds - Explainable AI Powered Stock Market Analysis and Forecasting Platform
   Neural Minds is an interactive Streamlit application for market analysis and short-term stock forecasting. It fetches OHLCV data from Yahoo Finance (yfinance) and Alpha Vantage, computes a rich set of technical features, trains/validates ML regression models (Random Forest, Gradient Boosting, Ridge/Lasso and optional XGBoost), provides multi-day iterative forecasts, backtests results, and offers explainability (global permutation importance and SHAP-based local explanations).
 
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
@@ -267,7 +267,7 @@ Optional dependencies — SHAP and XGBoost are optional. SHAP explanations may b
 
 ---
 
-## Contributing / Extending
+## 🔧 Contributing / Extending
 
 Add more models (e.g., LSTM/Transformer models) and Bayesian Optimization 
 Cloud-scale deployment and expose a REST API for scheduled retraining and production inference.
@@ -276,5 +276,5 @@ Implement transaction cost aware backtest with bid ask spread and slippage.
 
 ---
 
-## Credits
+## 🎖 Credits
 Built with Streamlit, scikit‑learn, SHAP, Plotly, and XGBoost/yfinance/Alpha Vantage.
